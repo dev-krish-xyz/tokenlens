@@ -1,0 +1,28 @@
+# Environment — never commit secrets
+.env
+.env.*
+!.env.example
+
+# Dependencies
+node_modules/
+
+# Build outputs
+dist/
+.next/
+!.next/types/**
+
+# Turbo cache
+.turbo/
+
+# TypeScript incremental
+*.tsbuildinfo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Local overrides
+*.local

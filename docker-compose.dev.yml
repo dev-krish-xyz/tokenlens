@@ -1,0 +1,48 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_DB: tokenlens
+      POSTGRES_USER: tokenlens
+      POSTGRES_PASSWORD: local
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - tokenlens-dev
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U tokenlens"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  clickhouse:
+    image: clickhouse/clickhouse-server:24
+    ports:
+      - "8123:8123"
+      - "9000:9000"
+    volumes:
+      - ch_data:/var/lib/clickhouse
+    networks:
+      - tokenlens-dev
+
+  dragonfly:
+    image: docker.dragonflydb.io/dragonflydb/dragonfly:latest
+    ports:
+      - "6379:6379"
+    ulimits:
+      memlock: -1
+    volumes:
+      - dragonfly_data:/data
+    networks:
+      - tokenlens-dev
+
+volumes:
+  postgres_data:
+  ch_data:
+  dragonfly_data:
+
+networks:
+  tokenlens-dev:
+    driver: bridge

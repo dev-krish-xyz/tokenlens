@@ -1,0 +1,21 @@
+{
+  "name": "@tokenlens/gateway",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "bun --watch src/index.ts",
+    "build": "bun build src/index.ts --outdir dist",
+    "test": "bun test",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@hono/node-server": "^1.13.7",
+    "@tokenlens/shared": "workspace:*",
+    "hono": "^4.7.11"
+  },
+  "devDependencies": {
+    "@types/bun": "latest",
+    "typescript": "*"
+  }
+}

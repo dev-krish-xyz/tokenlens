@@ -11,7 +11,8 @@
   },
   "dependencies": {
     "@tokenlens/shared": "workspace:*",
-    "bullmq": "^5.56.2"
+    "bullmq": "^5.56.2",
+    "zod": "^4.4.3"
   },
   "devDependencies": {
     "@types/bun": "latest",

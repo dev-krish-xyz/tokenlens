@@ -1,12 +1,26 @@
 import { describe, test, expect, mock } from 'bun:test'
 import { Hono } from 'hono'
-import { ValidationError, AppError } from '../../../packages/shared/src/errors'
+import { ValidationError, AppError, AuthError, RateLimitError, ProviderError } from '../../../packages/shared/src/errors'
 
 // Re-mock @tokenlens/shared comprehensively so it includes ValidationError even when
 // the rateLimiter test file ran first (its partial mock omits ValidationError).
 mock.module('@tokenlens/shared', () => ({
+  dragonflyClient: {
+    get: mock(async () => null),
+    setex: mock(async () => 'OK' as const),
+    pipeline: () => ({
+      zremrangebyscore: mock(() => {}),
+      zadd: mock(() => {}),
+      expire: mock(() => {}),
+      zcard: mock(() => {}),
+      exec: mock(async () => []),
+    }),
+  },
   ValidationError,
   AppError,
+  AuthError,
+  RateLimitError,
+  ProviderError,
 }))
 
 // Mock gateway env.ts so GATEWAY_ENV is predictable in tests

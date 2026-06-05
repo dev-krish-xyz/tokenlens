@@ -1,7 +1,7 @@
 import { describe, test, expect, mock } from 'bun:test';
 import { Hono } from 'hono';
 // Import error classes directly from source — avoids triggering shared/src/env.ts
-import { AppError, RateLimitError, ValidationError } from '../../../packages/shared/src/errors';
+import { AppError, RateLimitError, ValidationError, AuthError, ProviderError } from '../../../packages/shared/src/errors';
 
 type AppVariables = { requestId: string | undefined };
 
@@ -24,10 +24,16 @@ let pipeline = makePipeline(1);
 
 // Mock @tokenlens/shared BEFORE any dynamic import that transitively uses it
 mock.module('@tokenlens/shared', () => ({
-  dragonflyClient: { pipeline: () => pipeline },
+  dragonflyClient: {
+    pipeline: () => pipeline,
+    get: mock(async () => null),
+    setex: mock(async () => 'OK' as const),
+  },
   RateLimitError,
   AppError,
   ValidationError,
+  AuthError,
+  ProviderError,
 }));
 
 const { rateLimiter } = await import('./rateLimiter.ts');

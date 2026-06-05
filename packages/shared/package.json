@@ -4,7 +4,11 @@
   "private": true,
   "type": "module",
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./keyVault": "./src/services/keyVault.ts",
+    "./virtualKeyRepo": "./src/db/repositories/virtualKeyRepo.ts",
+    "./queues/definitions": "./src/queues/definitions.ts",
+    "./queues/types": "./src/queues/types.ts"
   },
   "scripts": {
     "test": "bun test",
@@ -12,6 +16,7 @@
   },
   "dependencies": {
     "@clickhouse/client": "^1.11.2",
+    "bullmq": "^5.56.2",
     "drizzle-orm": "^0.43.1",
     "ioredis": "^5.11.0",
     "pg": "^8.16.0",

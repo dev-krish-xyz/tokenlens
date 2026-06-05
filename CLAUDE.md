@@ -42,11 +42,12 @@ After response: async log push to DragonflyDB queue (non-blocking)
 - `rl:{ip}:{minute}` — rate limit window
 
 ## Current build state
-Day 1 in progress.
-Done: —
-Working: —
-Broken: —
-Next session: Drizzle schema (Day 2)
+Day 14 complete.
+Done: monorepo scaffold, docker-compose, Drizzle+ClickHouse schema, Zod env validation, GitHub Actions CI, Hono gateway with full middleware chain (requestId, rateLimiter, requestValidator, virtualKeyResolver), OpenAI/Anthropic/Gemini providers, KeyVault service (AES-256-GCM), virtualKeyRepo, WorkspaceContext type, subpath exports, proxyHandler (non-streaming), streamHandler (SSE passthrough + best-effort usage extraction), buildIngestionJob helper, BullMQ ingestionQueue (shared), gateway POST handler wired end-to-end.
+Working: 47 gateway tests passing, 12 shared tests passing, tsc clean on all packages.
+Broken/stubbed: budgetEnforcer (stub — needs INCRBYFLOAT logic), worker (not started), web (Next.js scaffold only).
+Shared subpath exports: @tokenlens/shared/keyVault, @tokenlens/shared/virtualKeyRepo, @tokenlens/shared/queues/definitions, @tokenlens/shared/queues/types.
+Next session: budgetEnforcer middleware
 
 ## Do not touch
 - `packages/shared/src/db/schema.ts` — only via drizzle-kit migrate

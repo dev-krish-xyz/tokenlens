@@ -6,12 +6,11 @@ import { rateLimiter } from './middlewares/rateLimiter.ts';
 import { requestValidator } from './middlewares/requestValidator.ts';
 import { virtualKeyResolver } from './middlewares/virtualKeyResolver.ts';
 import { budgetEnforcer } from './middlewares/budgetEnforcer.ts';
+import { proxyHandler } from './handlers/proxy.ts';
+import { streamHandler } from './handlers/stream.ts';
+import type { GatewayVariables } from './types.ts';
 
-type AppVariables = {
-  requestId: string | undefined;
-};
-
-const app = new Hono<{ Variables: AppVariables }>();
+const app = new Hono<{ Variables: GatewayVariables }>();
 
 app.onError((err, c) => {
   const requestId = c.get('requestId') ?? 'unknown';
@@ -37,15 +36,9 @@ app.get('/health', (c) => {
   });
 });
 
-app.post('/v1/chat/completions', (c) => {
-  return c.json(
-    {
-      error: 'Not implemented',
-      code: 'NOT_IMPLEMENTED',
-      requestId: c.get('requestId') ?? 'unknown',
-    },
-    501,
-  );
+app.post('/v1/chat/completions', async (c) => {
+  if (c.get('isStreaming')) return streamHandler(c);
+  return proxyHandler(c);
 });
 
 Bun.serve({ port: env.PORT, fetch: app.fetch });

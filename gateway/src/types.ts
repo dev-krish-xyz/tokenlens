@@ -1,3 +1,5 @@
+import type { WorkspaceContext } from '@tokenlens/shared'
+
 export interface GatewayVariables {
   requestId: string | undefined
   body: {
@@ -11,4 +13,5 @@ export interface GatewayVariables {
   featureTag: string
   userIdTag: string
   envTag: string
+  ctx: WorkspaceContext
 }

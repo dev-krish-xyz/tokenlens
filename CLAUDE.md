@@ -42,12 +42,12 @@ After response: async log push to DragonflyDB queue (non-blocking)
 - `rl:{ip}:{minute}` — rate limit window
 
 ## Current build state
-Day 14 complete.
-Done: monorepo scaffold, docker-compose, Drizzle+ClickHouse schema, Zod env validation, GitHub Actions CI, Hono gateway with full middleware chain (requestId, rateLimiter, requestValidator, virtualKeyResolver), OpenAI/Anthropic/Gemini providers, KeyVault service (AES-256-GCM), virtualKeyRepo, WorkspaceContext type, subpath exports, proxyHandler (non-streaming), streamHandler (SSE passthrough + best-effort usage extraction), buildIngestionJob helper, BullMQ ingestionQueue (shared), gateway POST handler wired end-to-end.
-Working: 47 gateway tests passing, 12 shared tests passing, tsc clean on all packages.
-Broken/stubbed: budgetEnforcer (stub — needs INCRBYFLOAT logic), worker (not started), web (Next.js scaffold only).
-Shared subpath exports: @tokenlens/shared/keyVault, @tokenlens/shared/virtualKeyRepo, @tokenlens/shared/queues/definitions, @tokenlens/shared/queues/types.
-Next session: budgetEnforcer middleware
+Day 16 complete.
+Done: monorepo scaffold, docker-compose, Drizzle+ClickHouse schema, Zod env validation, GitHub Actions CI, Hono gateway with full middleware chain, OpenAI/Anthropic/Gemini providers, KeyVault, virtualKeyRepo, WorkspaceContext, proxyHandler, streamHandler, buildIngestionJob, BullMQ ingestionQueue, pricingRepo (cache→regex match), costCalculator (pure), ClickhouseWriter (buffer+flush 2s/200), ingestionProcessor, worker/src/index.ts (SIGTERM graceful shutdown), Better Auth (email+password+Google OAuth), workspaceRepo, auth pages (login/register), protected dashboard layout, WorkspaceProvider.
+Working: 47 gateway / 23 shared / 5 worker tests passing, tsc clean on all packages.
+Broken/stubbed: budgetEnforcer (stub — needs INCRBYFLOAT logic). Run `bunx better-auth migrate` in web/ before first use to create ba_* tables.
+Shared subpath exports: @tokenlens/shared/keyVault, @tokenlens/shared/virtualKeyRepo, @tokenlens/shared/pricingRepo, @tokenlens/shared/clickhouse/writer, @tokenlens/shared/queues/definitions, @tokenlens/shared/queues/types, @tokenlens/shared/workspaceRepo.
+Next session: tRPC setup + dashboard analytics queries (ClickHouse spend aggregations)
 
 ## Do not touch
 - `packages/shared/src/db/schema.ts` — only via drizzle-kit migrate

@@ -1,7 +1,7 @@
-Day 14 | 2026-06-05
-Done: proxyHandler, streamHandler, buildIngestionJob, queue definitions, index.ts wired
-Tests: 47 gateway / 12 shared — all passing
-Next: budgetEnforcer (Day 23 per CLAUDE.md) or providerProxy smoke test
+Day 16 | 2026-06-06
+Done: Better Auth setup, workspaceRepo, login/register pages, protected dashboard layout, WorkspaceProvider
+Tests: 47 gateway / 23 shared / 5 worker — all passing
+Next: tRPC setup + dashboard analytics queries
 
 ---
 
@@ -44,6 +44,34 @@ virtualKeyRepo (`packages/shared/src/db/repositories/virtualKeyRepo.ts`):
 bunfig.toml + test-setup.ts added to packages/shared for env var preloading.
 12 new tests (7 keyVault + 4 virtualKeyRepo + 1 index).
 
+### Day 15 — 2026-06-05
+`packages/shared/src/dragonfly/bullmqClient.ts`:
+- `dragonflyClientForBullMQ` — host/port plain object, barrel-exported. No IORedis instance (avoids version mismatch).
+
+`packages/shared/src/clickhouse/writer.ts`:
+- `ClickhouseWriter` class: buffer[], setInterval 2s flush, batchSize 200
+- `clickhouseWriter` singleton instance exported from subpath `@tokenlens/shared/clickhouse/writer`
+
+`packages/shared/src/db/repositories/pricingRepo.ts`:
+- `findByPattern(provider, model)`: DragonflyDB cache → Postgres regex match → cache result (TTL 3600, including null)
+- Null result cached to prevent repeated DB hits for unknown models
+
+`packages/shared/src/services/costCalculator.ts`:
+- `calculateCost(tokensIn, tokensOut, pricing)`: pure function, returns 0 if pricing null
+- Barrel-exported from @tokenlens/shared
+
+`worker/src/queues/ingestionProcessor.ts`:
+- `processIngestionJob(job)`: findByPattern → calculateCost → clickhouseWriter.add(RequestLogRow)
+- Errors propagate — BullMQ handles retries
+
+`worker/src/index.ts`:
+- Worker('ingestion', processIngestionJob, { connection: dragonflyClientForBullMQ, concurrency })
+- SIGTERM: ingestionWorker.close() + clickhouseWriter.flush() before exit
+- Event handlers: completed/failed — job.data never logged
+
+Bun module poisoning fix: drizzle-orm mock in any shared test must include {eq, and, desc}.
+New subpath exports: @tokenlens/shared/pricingRepo, @tokenlens/shared/clickhouse/writer.
+
 ### Day 14 — 2026-06-05
 `packages/shared/src/queues/types.ts`:
 - IngestionJobData interface (requestId, virtualKeyId, workspaceId, provider, model, envTag, featureTag, userIdTag, tokensIn, tokensOut, latencyMs, statusCode, createdAt)
@@ -70,6 +98,58 @@ bunfig.toml + test-setup.ts added to packages/shared for env var preloading.
 - App type updated to `Hono<{ Variables: GatewayVariables }>`
 
 6 new proxy handler tests. All 3 middleware mocks updated with ProviderError to prevent Bun module re-evaluation poisoning across test files.
+
+### Day 16 — 2026-06-06
+`packages/shared/src/db/repositories/workspaceRepo.ts`:
+- `createWithAdmin(userId, userEmail)`: Drizzle transaction → insert workspace + users (onConflictDoNothing) + workspace_members{role:'admin'}
+- `findByUserId(userId)`: innerJoin workspace_members → workspaces, LIMIT 1
+- `findById(id)`: basic select by PK
+- Subpath export: `@tokenlens/shared/workspaceRepo`
+
+`web/src/lib/auth-schema.ts`:
+- Better Auth tables: ba_users, ba_sessions, ba_accounts, ba_verifications
+- Columns match Better Auth's camelCase internal names (emailVerified, createdAt, updatedAt) mapped to snake_case DB columns
+
+`web/src/lib/auth-db.ts`:
+- Drizzle node-postgres instance using BA schema tables only
+
+`web/src/lib/auth.ts`:
+- betterAuth with drizzleAdapter → ba_* tables
+- advanced.database.generateId = 'uuid' — compatible with shared users.id (uuid pg type)
+- emailAndPassword enabled
+- Google OAuth conditional on GOOGLE_CLIENT_ID/SECRET env vars
+- databaseHooks.user.create.after → createWithAdmin(user.id, user.email)
+
+`web/src/app/api/auth/[...all]/route.ts`:
+- toNextJsHandler(auth) → GET + POST export
+
+`web/src/lib/auth-client.ts`:
+- createAuthClient → signIn, signUp, signOut, useSession exports
+
+`web/src/lib/session.ts`:
+- `getSession()`: server-side via auth.api.getSession + next/headers
+- `requireSession()`: redirects /login if no session
+- `requireWorkspace()`: requireSession + findByUserId, redirects /login if no workspace
+
+`web/src/providers/WorkspaceProvider.tsx`:
+- Client component, WorkspaceContext with workspace: Workspace
+- `useWorkspace()` hook throws if used outside provider
+
+`web/src/app/(auth)/login/page.tsx` + `register/page.tsx`:
+- email+password forms + Google OAuth button (always present)
+- shadcn/ui-style Tailwind components
+
+`web/src/app/(dashboard)/layout.tsx`:
+- Server component, calls requireWorkspace(), wraps with WorkspaceProvider
+- Header showing workspace.name
+
+`web/src/app/(dashboard)/dashboard/page.tsx`:
+- Placeholder with user welcome + "Analytics coming soon"
+
+Tailwind CSS v4 setup: postcss.config.mjs + globals.css with `@import "tailwindcss"`.
+env.ts: GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, STRIPE_*, RESEND_API_KEY all optional.
+web/tsconfig.json: added allowImportingTsExtensions: true.
+Run `bunx better-auth migrate` to create ba_* tables in Postgres before first use.
 
 ### Day 13 — 2026-06-05
 WorkspaceContext type (`packages/shared/src/types.ts`):
@@ -103,7 +183,7 @@ Total: 41 gateway tests passing.
 |------|--------|
 | gateway/src/middlewares/budgetEnforcer.ts | stub — awaits INCRBYFLOAT logic |
 | gateway/src/index.ts POST handler | DONE — proxyHandler/streamHandler wired |
-| worker/ | not started |
+| worker/ | DONE — ingestionProcessor + index.ts with SIGTERM shutdown |
 | web/ | Next.js scaffold only |
 
 ---

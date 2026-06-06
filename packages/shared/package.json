@@ -7,8 +7,11 @@
     ".": "./src/index.ts",
     "./keyVault": "./src/services/keyVault.ts",
     "./virtualKeyRepo": "./src/db/repositories/virtualKeyRepo.ts",
+    "./pricingRepo": "./src/db/repositories/pricingRepo.ts",
+    "./clickhouse/writer": "./src/clickhouse/writer.ts",
     "./queues/definitions": "./src/queues/definitions.ts",
-    "./queues/types": "./src/queues/types.ts"
+    "./queues/types": "./src/queues/types.ts",
+    "./workspaceRepo": "./src/db/repositories/workspaceRepo.ts"
   },
   "scripts": {
     "test": "bun test",

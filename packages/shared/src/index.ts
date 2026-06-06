@@ -4,4 +4,6 @@ export * from './clickhouse/client';
 export * from './env';
 export * from './errors';
 export * from './dragonfly/client';
+export * from './dragonfly/bullmqClient';
+export * from './services/costCalculator';
 export * from './types';

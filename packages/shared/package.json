@@ -11,7 +11,8 @@
     "./clickhouse/writer": "./src/clickhouse/writer.ts",
     "./queues/definitions": "./src/queues/definitions.ts",
     "./queues/types": "./src/queues/types.ts",
-    "./workspaceRepo": "./src/db/repositories/workspaceRepo.ts"
+    "./workspaceRepo": "./src/db/repositories/workspaceRepo.ts",
+    "./clickhouse/queries": "./src/clickhouse/queries.ts"
   },
   "scripts": {
     "test": "bun test",

@@ -1,11 +1,45 @@
-Day 16 | 2026-06-06
-Done: Better Auth setup, workspaceRepo, login/register pages, protected dashboard layout, WorkspaceProvider
+Day 17 | 2026-06-06
+Done: tRPC v11 setup, ClickHouse query service, cost router (getDailySpend/getTopModels/getSummaryStats), TRPCProvider in dashboard layout
 Tests: 47 gateway / 23 shared / 5 worker — all passing
-Next: tRPC setup + dashboard analytics queries
+Next: dashboard analytics UI components (charts + stat cards)
 
 ---
 
 ## Completed days
+
+### Day 17 — 2026-06-06
+`packages/shared/src/clickhouse/queries.ts`:
+- `getDailySpend(workspaceId, days)`: daily cost + request count aggregation, ordered ASC
+- `getTopModels(workspaceId, days)`: top 10 models by cost, grouped by model+provider
+- `getSummaryStats(workspaceId, days)`: totalCost, totalRequests, avgLatencyMs, uniqueModels
+- All queries: parameterized `{workspaceId: String}` and `{days: UInt32}` — no string interpolation
+- Subpath export: `@tokenlens/shared/clickhouse/queries`
+
+`web/src/server/api/trpc.ts`:
+- `Context` type: `{ session: Session | null; workspaceId: string | null }`
+- `createContext()`: getSession() + findByUserId() — workspaceId from server, never client
+- `protectedWorkspaceProcedure`: throws UNAUTHORIZED/FORBIDDEN, narrows ctx to non-null session+workspaceId
+- Exports: `router`, `publicProcedure`, `createCallerFactory`
+
+`web/src/server/api/routers/cost.ts`:
+- `getDailySpend`, `getTopModels`, `getSummaryStats` — all use `protectedWorkspaceProcedure`
+- Input: `z.object({ days: z.number().int().min(1).max(90).default(7) })`
+- workspaceId always from ctx — never accepted as client input
+
+`web/src/server/api/root.ts`:
+- `appRouter` with `cost: costRouter`
+- `AppRouter` type exported for client inference
+
+`web/src/app/api/trpc/[trpc]/route.ts`:
+- `fetchRequestHandler` with GET + POST exports
+- `createContext: () => createContext()` — fresh context per request
+
+`web/src/trpc/client.ts` — `createTRPCReact<AppRouter>()` (client components)
+`web/src/trpc/server.ts` — `getServerCaller()` using `createCallerFactory` (server components only)
+`web/src/trpc/provider.tsx` — `TRPCProvider` with QueryClient + httpBatchLink → /api/trpc
+
+`web/src/app/(dashboard)/layout.tsx`:
+- Wrapped children with `TRPCProvider` (outermost) → `WorkspaceProvider`
 
 ### Day 1 — 2026-06-02
 Monorepo scaffold (Bun + Turborepo), docker-compose (Postgres, ClickHouse, DragonflyDB), CLAUDE.md.

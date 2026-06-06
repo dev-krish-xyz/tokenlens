@@ -42,12 +42,12 @@ After response: async log push to DragonflyDB queue (non-blocking)
 - `rl:{ip}:{minute}` — rate limit window
 
 ## Current build state
-Day 16 complete.
-Done: monorepo scaffold, docker-compose, Drizzle+ClickHouse schema, Zod env validation, GitHub Actions CI, Hono gateway with full middleware chain, OpenAI/Anthropic/Gemini providers, KeyVault, virtualKeyRepo, WorkspaceContext, proxyHandler, streamHandler, buildIngestionJob, BullMQ ingestionQueue, pricingRepo (cache→regex match), costCalculator (pure), ClickhouseWriter (buffer+flush 2s/200), ingestionProcessor, worker/src/index.ts (SIGTERM graceful shutdown), Better Auth (email+password+Google OAuth), workspaceRepo, auth pages (login/register), protected dashboard layout, WorkspaceProvider.
+Day 17 complete.
+Done: monorepo scaffold, docker-compose, Drizzle+ClickHouse schema, Zod env validation, GitHub Actions CI, Hono gateway with full middleware chain, OpenAI/Anthropic/Gemini providers, KeyVault, virtualKeyRepo, WorkspaceContext, proxyHandler, streamHandler, buildIngestionJob, BullMQ ingestionQueue, pricingRepo (cache→regex match), costCalculator (pure), ClickhouseWriter (buffer+flush 2s/200), ingestionProcessor, worker/src/index.ts (SIGTERM graceful shutdown), Better Auth (email+password+Google OAuth), workspaceRepo, auth pages (login/register), protected dashboard layout, WorkspaceProvider, tRPC v11 (protectedWorkspaceProcedure, cost router), ClickHouse query service (getDailySpend/getTopModels/getSummaryStats), TRPCProvider in dashboard layout.
 Working: 47 gateway / 23 shared / 5 worker tests passing, tsc clean on all packages.
 Broken/stubbed: budgetEnforcer (stub — needs INCRBYFLOAT logic). Run `bunx better-auth migrate` in web/ before first use to create ba_* tables.
-Shared subpath exports: @tokenlens/shared/keyVault, @tokenlens/shared/virtualKeyRepo, @tokenlens/shared/pricingRepo, @tokenlens/shared/clickhouse/writer, @tokenlens/shared/queues/definitions, @tokenlens/shared/queues/types, @tokenlens/shared/workspaceRepo.
-Next session: tRPC setup + dashboard analytics queries (ClickHouse spend aggregations)
+Shared subpath exports: @tokenlens/shared/keyVault, @tokenlens/shared/virtualKeyRepo, @tokenlens/shared/pricingRepo, @tokenlens/shared/clickhouse/writer, @tokenlens/shared/clickhouse/queries, @tokenlens/shared/queues/definitions, @tokenlens/shared/queues/types, @tokenlens/shared/workspaceRepo.
+Next session: dashboard analytics UI components (stat cards + charts using tRPC cost router)
 
 ## Do not touch
 - `packages/shared/src/db/schema.ts` — only via drizzle-kit migrate

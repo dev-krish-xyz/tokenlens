@@ -1,11 +1,41 @@
-Day 17 | 2026-06-06
-Done: tRPC v11 setup, ClickHouse query service, cost router (getDailySpend/getTopModels/getSummaryStats), TRPCProvider in dashboard layout
+Day 18 | 2026-06-06
+Done: virtualKey tRPC router (create/list/delete/updateBudget), /dashboard/keys page, sidebar nav with active route
 Tests: 47 gateway / 23 shared / 5 worker — all passing
-Next: dashboard analytics UI components (charts + stat cards)
+Next: dashboard analytics UI (stat cards + daily spend chart using cost router)
 
 ---
 
 ## Completed days
+
+### Day 18 — 2026-06-06
+`packages/shared/src/db/repositories/virtualKeyRepo.ts`:
+- `updateBudget(id, workspaceId, budgetCap)`: UPDATE with dual-condition WHERE (id + workspaceId), strips encrypted_key, returns SafeVirtualKey | null
+
+`web/src/server/api/routers/virtualKey.ts`:
+- `create`: validates realApiKey not tl-vk- prefix, encrypt(), virtualKeyRepo.create(), strips encrypted_key from return
+- `list`: findByWorkspace — encrypted_key already excluded by repo
+- `delete`: softDelete(id, ctx.workspaceId) — ownership enforced by dual-condition
+- `updateBudget`: calls repo updateBudget, throws NOT_FOUND if null
+
+`web/src/app/(dashboard)/dashboard/keys/page.tsx`:
+- Table: Name / Provider (badge) / Budget Cap / Created / Delete action
+- Create modal: name + provider select + password input + optional budget cap
+- Reveal modal: shows key ID once with copy button + "Save this key" warning
+- Delete confirm modal with AlertDialog-style confirm/cancel
+- tRPC invalidation on create success (reveal done) and delete success
+
+`web/src/components/DashboardNav.tsx`:
+- Client component, usePathname() for active state
+- Links: Dashboard (/dashboard) + API Keys (/dashboard/keys)
+
+`web/src/app/(dashboard)/layout.tsx`:
+- Added DashboardNav to header
+
+`web/src/server/api/root.ts`:
+- Added virtualKey: virtualKeyRouter to appRouter
+
+Security: `encrypted_key` never appears in any tRPC response — stripped at repo layer (`findByWorkspace`, `updateBudget`) or stripped in router after `create` (`const { encrypted_key: _omit, ...safe } = row`).
+drizzle-orm version mismatch fix: updateBudget moved to packages/shared/virtualKeyRepo (same drizzle version as the schema) instead of inline in web router.
 
 ### Day 17 — 2026-06-06
 `packages/shared/src/clickhouse/queries.ts`:

@@ -35,3 +35,19 @@ export async function softDelete(id: string, workspaceId: string): Promise<void>
     .set({ is_active: false })
     .where(and(eq(virtual_keys.id, id), eq(virtual_keys.workspace_id, workspaceId)))
 }
+
+export async function updateBudget(
+  id: string,
+  workspaceId: string,
+  budgetCap: number | null
+): Promise<SafeVirtualKey | null> {
+  const rows = await db
+    .update(virtual_keys)
+    .set({ budget_cap: budgetCap !== null ? String(budgetCap) : null })
+    .where(and(eq(virtual_keys.id, id), eq(virtual_keys.workspace_id, workspaceId)))
+    .returning()
+  const row = rows[0]
+  if (!row) return null
+  const { encrypted_key: _omit, ...safe } = row
+  return safe
+}

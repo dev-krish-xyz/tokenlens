@@ -1,11 +1,67 @@
-Day 18 | 2026-06-06
-Done: virtualKey tRPC router (create/list/delete/updateBudget), /dashboard/keys page, sidebar nav with active route
+Day 20 | 2026-06-07
+Done: request logs table (Developer View) + per-customer cost attribution
 Tests: 47 gateway / 23 shared / 5 worker — all passing
-Next: dashboard analytics UI (stat cards + daily spend chart using cost router)
+Next: budgetEnforcer middleware (INCRBYFLOAT logic) — Day 21
 
 ---
 
 ## Completed days
+
+### Day 20 — 2026-06-07
+`packages/shared/src/clickhouse/queries.ts`:
+- `getRequestLogs(workspaceId, filters)`: parameterized WHERE with optional model/provider/userId, ORDER BY created_at DESC, LIMIT/OFFSET pagination
+- `getRequestLogCount(workspaceId, filters)`: same optional filters, SELECT count() for pagination total
+- `getPerCustomerCost(workspaceId, days)`: GROUP BY user_id_tag, topK(1)(model)[1], user_id_tag != '' guard, LIMIT 50
+- Shared `buildConditions()` helper — no string interpolation anywhere
+
+`web/src/server/api/routers/cost.ts`:
+- `getRequestLogs`: parallel Promise.all([getRequestLogs, getRequestLogCount]) → { rows, total }
+- `getPerCustomerCost`: calls getPerCustomerCost(ctx.workspaceId, input.days)
+
+`web/src/app/(dashboard)/dashboard/logs/page.tsx`:
+- URL-synced filters: days (parseAsInteger, default 7), model, provider, userId, page
+- Debounced text inputs (300ms, skip-on-mount ref pattern) for model + userId
+- Filter bar: date toggle, model input, provider select, userId input, Clear filters button
+- Table: Time (relative, title tooltip) / Provider (badge) / Model (truncated) / Tokens In / Tokens Out / Cost ($X.XXXXXX) / Latency (color: <500ms green, 500-2000 yellow, >2000 red) / Status (badge: 200 green, 4xx yellow, 5xx red) / Env / User ID (20-char truncate with tooltip)
+- Pagination: Showing X–Y of Z, Previous/Next with disable logic
+
+`web/src/app/(dashboard)/dashboard/customers/page.tsx`:
+- URL-synced days (parseAsInteger, default 30)
+- Table: Customer ID / Total Cost / Requests / Avg Cost/Req / Avg Latency / Top Model
+- Top 3 by cost → red-tinted row background
+- Empty state with curl code snippet showing X-TL-User-Id header usage
+
+`web/src/components/DashboardNav.tsx`:
+- Added Logs → /dashboard/logs and Customers → /dashboard/customers
+
+### Day 19 — 2026-06-06
+`web/src/features/cost-dashboard/useDateRange.ts`:
+- `useDateRange()`: nuqs `useQueryState('days', parseAsInteger.withDefault(7))` — URL-synced, shareable
+
+`web/src/features/cost-dashboard/SummaryCards.tsx`:
+- 4-card 2x2 grid (md: 4-col): Total Spend ($X.XXXX), Total Requests, Avg Latency, Models Used
+- Empty state banner with link to /dashboard/keys when totalRequests === 0
+- Skeleton loading state
+
+`web/src/features/cost-dashboard/DailySpendChart.tsx`:
+- Recharts AreaChart, x-axis: "Jun 5" format, y-axis: $X.XXXX
+- Gradient fill (indigo-600 @ 20% opacity), custom tooltip with date + cost + requests
+- Skeleton and "No spend data" empty state
+
+`web/src/features/cost-dashboard/TopModelsTable.tsx`:
+- 5-column table: Model / Provider (badge) / Total Cost / Requests / Avg Cost/Req
+- Avg Cost/Req to 6 decimal places, slice(0, 10) safety cap
+- Provider badges match keys page (blue/orange/green), 3 skeleton rows
+
+`web/src/app/(dashboard)/dashboard/page.tsx`:
+- Replaced server-component placeholder with client component
+- Page header + [7d][30d][90d] toggle → setDays() → URL update
+- SummaryCards + DailySpendChart + TopModelsTable, each fetches own data independently
+
+`web/src/app/(dashboard)/layout.tsx`:
+- Added NuqsAdapter (nuqs/adapters/next) outermost wrapper — required for useQueryState
+
+Packages added: nuqs@2.8.9, recharts@3.8.1 (types bundled, @types/recharts removed).
 
 ### Day 18 — 2026-06-06
 `packages/shared/src/db/repositories/virtualKeyRepo.ts`:

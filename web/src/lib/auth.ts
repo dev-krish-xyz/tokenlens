@@ -13,8 +13,7 @@ export const auth = betterAuth({
 
   advanced: {
     database: {
-      // Use UUIDs so IDs are compatible with shared users.id (uuid pg type)
-      generateId: 'uuid',
+      generateId: () => crypto.randomUUID(),
     },
   },
 

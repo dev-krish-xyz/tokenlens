@@ -5,6 +5,8 @@ import { usePathname } from 'next/navigation'
 const NAV_ITEMS = [
   { href: '/dashboard', label: 'Dashboard' },
   { href: '/dashboard/keys', label: 'API Keys' },
+  { href: '/dashboard/logs', label: 'Logs' },
+  { href: '/dashboard/customers', label: 'Customers' },
 ]
 
 export function DashboardNav() {

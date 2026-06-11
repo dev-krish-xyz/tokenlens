@@ -3,6 +3,7 @@ import { useDateRange } from '../../../features/cost-dashboard/useDateRange.ts'
 import { SummaryCards } from '../../../features/cost-dashboard/SummaryCards.tsx'
 import { DailySpendChart } from '../../../features/cost-dashboard/DailySpendChart.tsx'
 import { TopModelsTable } from '../../../features/cost-dashboard/TopModelsTable.tsx'
+import { BudgetSummaryWidget } from '../../../features/cost-dashboard/BudgetSummaryWidget.tsx'
 
 const DATE_OPTIONS = [
   { label: '7d', value: 7 },
@@ -37,6 +38,7 @@ export default function DashboardPage() {
       <SummaryCards days={days} />
       <DailySpendChart days={days} />
       <TopModelsTable days={days} />
+      <BudgetSummaryWidget />
     </div>
   )
 }

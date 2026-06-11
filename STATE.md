@@ -1,11 +1,48 @@
-Day 24 | 2026-06-11
-Done: budgetEnforcer middleware (real INCRBYFLOAT enforcement, 429 before provider call), budget tRPC router (key + workspace status), budget dashboard page with color-coded progress bars
-Tests: 38 shared / 58 gateway / 5 worker — all passing. tsc clean on gateway, web.
-Next: Day 25 (TBD)
+Day 25 | 2026-06-11
+Done: alertConfigRepo (CRUD with ownership checks), alertConfig tRPC router, enhanced budget page (workspace card + per-key grid + alert config table + add/delete dialogs), BudgetSummaryWidget on main dashboard
+Tests: 45 shared / 58 gateway / 5 worker — all passing. tsc clean on shared, web.
+Next: Day 26 — alert evaluation worker (fire alerts from BullMQ, email/webhook dispatch)
 
 ---
 
 ## Completed days
+
+### Day 25 — 2026-06-11
+`packages/shared/src/db/repositories/alertConfigRepo.ts` (new):
+- `listByWorkspace(workspaceId)`: SELECT * ORDER BY id ASC
+- `create(data)`: INSERT with defaults cooldown_min=60, is_active=true
+- `update(id, workspaceId, data)`: UPDATE ... WHERE id AND workspace_id — ownership enforced
+- `deleteConfig(id, workspaceId)`: DELETE WHERE id AND workspace_id — ownership enforced
+- New subpath export: `@tokenlens/shared/alertConfigRepo`
+
+`packages/shared/src/db/repositories/alertConfigRepo.test.ts` (new):
+- 7 tests: listByWorkspace, create defaults + custom cooldown + integer thresholdPct, update WHERE ownership, update field mapping (isActive → is_active), deleteConfig WHERE ownership
+
+`web/src/server/api/routers/alertConfig.ts` (new):
+- `listAlertConfigs`: protectedMemberProcedure
+- `createAlertConfig`: protectedAdminProcedure — channel, thresholdPct (1–100, default 80), cooldownMin (5–1440, default 60)
+- `updateAlertConfig`: protectedAdminProcedure — builds partial update without spreading optional fields (exactOptionalPropertyTypes fix)
+- `deleteAlertConfig`: protectedAdminProcedure
+
+`web/src/server/api/root.ts`: `alertConfig: alertConfigRouter` added to appRouter
+
+`web/src/app/(dashboard)/dashboard/budget/page.tsx` (replaced Day 24 version):
+- Workspace budget card: progress bar with green/yellow/red, warning/exceeded banners, remaining + reset date
+- No-cap state: dashed border card with link to Settings
+- Per-key grid: 2-column on sm+, provider badge, BLOCKED/WARNING status badges, same color coding
+- Alert config table: Channel (40-char truncate) / Threshold / Cooldown / Active (toggle switch) / Delete
+- Add alert dialog: channel input + threshold select (50/70/80/90/95%) + cooldown select (15m/30m/1h/4h/24h)
+- Delete confirm dialog (inline, no external library)
+- aria-label on all progress bars (percentage in label)
+
+`web/src/features/cost-dashboard/BudgetSummaryWidget.tsx` (new):
+- Renders null when no keys ≥ 70% of cap (never clutters main dashboard)
+- Compact list of approaching keys with colored dot indicators
+- "View all budgets →" link to /dashboard/budget
+
+`web/src/app/(dashboard)/dashboard/page.tsx`: `<BudgetSummaryWidget />` added below TopModelsTable
+
+Bun mock fix: added `asc` to drizzle-orm mock in virtualKeyRepo.test.ts, pricingRepo.test.ts, budgetService.test.ts, workspaceRepo.test.ts — alertConfigRepo.ts uses `asc()` for ORDER BY.
 
 ### Day 24 — 2026-06-11
 `gateway/src/middlewares/budgetEnforcer.ts` (replaced stub):

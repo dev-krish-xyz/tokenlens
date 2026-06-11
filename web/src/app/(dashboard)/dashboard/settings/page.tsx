@@ -49,7 +49,7 @@ const inputStyle: React.CSSProperties = {
   outline: 'none',
 }
 
-type Tab = 'general' | 'team' | 'invites'
+type Tab = 'general' | 'team' | 'invites' | 'api' | 'notifications' | 'security' | 'danger'
 
 export default function SettingsPage() {
   const [tab, setTab] = useState<Tab>('general')
@@ -123,6 +123,10 @@ export default function SettingsPage() {
     { id: 'general', label: 'General' },
     { id: 'team', label: `Team${members ? ` (${members.length})` : ''}` },
     { id: 'invites', label: `Pending Invites${pendingInvites?.length ? ` (${pendingInvites.length})` : ''}` },
+    { id: 'api', label: 'API & Gateway' },
+    { id: 'notifications', label: 'Notifications' },
+    { id: 'security', label: 'Security' },
+    { id: 'danger', label: '⚠ Danger Zone' },
   ]
 
   return (
@@ -945,6 +949,200 @@ export default function SettingsPage() {
                 {revokeInviteMutation.isPending ? 'Revoking…' : 'Revoke'}
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── API & Gateway tab ── */}
+      {tab === 'api' && (
+        <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, padding: 18, maxWidth: 600, display: 'flex', flexDirection: 'column', gap: 18 }}>
+          <div>
+            <div style={{ fontSize: 12, fontWeight: 500, color: 'var(--t2)', marginBottom: 8 }}>Gateway Endpoint</div>
+            <div style={{ fontFamily: 'monospace', fontSize: 12, background: '#F5F5F5', padding: '10px 12px', borderRadius: 8, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              https://gateway.tokenlens.ai/v1
+              <button onClick={() => void navigator.clipboard.writeText('https://gateway.tokenlens.ai/v1')} style={{ fontSize: 11, background: 'var(--pri)', color: '#fff', border: 'none', padding: '3px 8px', borderRadius: 6, cursor: 'pointer' }}>Copy</button>
+            </div>
+          </div>
+          <div>
+            <div style={{ fontSize: 12, fontWeight: 500, color: 'var(--t2)', marginBottom: 8 }}>Organization API Key</div>
+            <div style={{ fontFamily: 'monospace', fontSize: 12, background: '#F5F5F5', padding: '10px 12px', borderRadius: 8, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              tl-org-••••••••••••••••••••••••
+              {/* TODO: trpc.org.revealApiKey.useMutation() — reveal real org API key */}
+              <button onClick={() => { /* TODO: trpc.org.revealApiKey */ }} style={{ fontSize: 11, color: 'var(--pri)', background: 'transparent', border: '1px solid var(--pri)', padding: '3px 8px', borderRadius: 6, cursor: 'pointer' }}>Reveal</button>
+            </div>
+          </div>
+          <div>
+            <div style={{ fontSize: 12, fontWeight: 500, color: 'var(--t2)', marginBottom: 8 }}>Required Headers</div>
+            <div style={{ background: '#1C1B22', borderRadius: 10, padding: '14px 16px', fontFamily: 'monospace', fontSize: 11, lineHeight: 1.8, color: '#E8E6FF' }}>
+              <span style={{ color: '#787585' }}># Route via TokenLens gateway</span><br />
+              Authorization: Bearer tl-vk-{'{your-key}'}<br />
+              X-TL-Feature: chat<br />
+              X-TL-User-Id: {'{customer-id}'}<br />
+              X-TL-Env: production
+            </div>
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div>
+              <div style={{ fontSize: 13, fontWeight: 500 }}>Request ID Forwarding</div>
+              <div style={{ fontSize: 11, color: 'var(--t3)' }}>
+                Auto-inject X-Request-Id header
+                {/* TODO: trpc.workspace.updateSettings.useMutation({ requestIdForwarding: v }) */}
+              </div>
+            </div>
+            <label style={{ position: 'relative', display: 'inline-block', width: 40, height: 22, flexShrink: 0 }}>
+              <input type="checkbox" defaultChecked style={{ opacity: 0, width: 0, height: 0, position: 'absolute' }} />
+              <span style={{ position: 'absolute', inset: 0, background: 'var(--pri)', borderRadius: 9999, cursor: 'pointer' }}>
+                <span style={{ position: 'absolute', width: 16, height: 16, borderRadius: '50%', background: '#fff', top: 3, left: 21, boxShadow: '0 1px 3px rgba(0,0,0,.15)' }} />
+              </span>
+            </label>
+          </div>
+        </div>
+      )}
+
+      {/* ── Notifications tab ── */}
+      {tab === 'notifications' && (
+        <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, padding: 18, maxWidth: 600, display: 'flex', flexDirection: 'column', gap: 16 }}>
+          {/* TODO: trpc.notifications.getPrefs.useQuery() and trpc.notifications.savePrefs.useMutation() */}
+          {[
+            { label: 'Budget warnings (80%)', sub: 'Email + in-app toast', defaultOn: true },
+            { label: 'Budget blocked (100%)', sub: 'Email + PagerDuty', defaultOn: true },
+            { label: 'Margin degradation alerts', sub: 'Email when customer margin < 70%', defaultOn: true },
+            { label: 'Weekly summary email', sub: 'Every Monday 9am UTC', defaultOn: true },
+            { label: 'Slack notifications', sub: '#ai-costs channel', defaultOn: false },
+          ].map((row) => (
+            <div key={row.label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div>
+                <div style={{ fontSize: 13, fontWeight: 500 }}>{row.label}</div>
+                <div style={{ fontSize: 11, color: 'var(--t3)' }}>{row.sub}</div>
+              </div>
+              <label style={{ position: 'relative', display: 'inline-block', width: 40, height: 22, flexShrink: 0 }}>
+                <input type="checkbox" defaultChecked={row.defaultOn} style={{ opacity: 0, width: 0, height: 0, position: 'absolute' }} />
+                <span style={{ position: 'absolute', inset: 0, background: row.defaultOn ? 'var(--pri)' : 'var(--border)', borderRadius: 9999, cursor: 'pointer' }}>
+                  <span style={{ position: 'absolute', width: 16, height: 16, borderRadius: '50%', background: '#fff', top: 3, left: row.defaultOn ? 21 : 3, boxShadow: '0 1px 3px rgba(0,0,0,.15)' }} />
+                </span>
+              </label>
+            </div>
+          ))}
+          <div style={{ paddingTop: 8, borderTop: '1px solid var(--border)' }}>
+            <div style={{ fontSize: 12, fontWeight: 500, color: 'var(--t2)', marginBottom: 8 }}>Notification Email</div>
+            <input type="email" defaultValue="you@company.com" style={{ width: '100%', padding: '9px 12px', border: '1px solid var(--border)', borderRadius: 8, fontSize: 13, background: 'var(--bg)', color: 'var(--t1)', outline: 'none' }} />
+          </div>
+          <button
+            onClick={() => { /* TODO: trpc.notifications.savePrefs.useMutation() */ }}
+            style={{ alignSelf: 'flex-start', padding: '9px 20px', borderRadius: 8, background: 'var(--pri)', color: '#fff', fontSize: 12, fontWeight: 500, border: 'none', cursor: 'pointer' }}>
+            Save Preferences
+          </button>
+        </div>
+      )}
+
+      {/* ── Security tab ── */}
+      {tab === 'security' && (
+        <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, padding: 18, maxWidth: 600, display: 'flex', flexDirection: 'column', gap: 16 }}>
+          {/* TODO: trpc.security.getSettings.useQuery() and trpc.security.update*.useMutation() */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div>
+              <div style={{ fontSize: 13, fontWeight: 500 }}>Two-Factor Authentication</div>
+              <div style={{ fontSize: 11, color: 'var(--t3)' }}>Require 2FA for all team members</div>
+            </div>
+            <label style={{ position: 'relative', display: 'inline-block', width: 40, height: 22, flexShrink: 0 }}>
+              <input type="checkbox" defaultChecked style={{ opacity: 0, width: 0, height: 0, position: 'absolute' }} />
+              <span style={{ position: 'absolute', inset: 0, background: 'var(--pri)', borderRadius: 9999, cursor: 'pointer' }}>
+                <span style={{ position: 'absolute', width: 16, height: 16, borderRadius: '50%', background: '#fff', top: 3, left: 21, boxShadow: '0 1px 3px rgba(0,0,0,.15)' }} />
+              </span>
+            </label>
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div>
+              <div style={{ fontSize: 13, fontWeight: 500 }}>SSO / SAML</div>
+              <div style={{ fontSize: 11, color: 'var(--t3)' }}>Single sign-on via your identity provider</div>
+            </div>
+            <span style={{ fontSize: 11, background: 'var(--pri-m)', color: 'var(--pri)', padding: '2px 8px', borderRadius: 9999, fontWeight: 500 }}>Scale plan</span>
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div>
+              <div style={{ fontSize: 13, fontWeight: 500 }}>IP Allowlist</div>
+              <div style={{ fontSize: 11, color: 'var(--t3)' }}>Restrict API access by IP range</div>
+            </div>
+            <label style={{ position: 'relative', display: 'inline-block', width: 40, height: 22, flexShrink: 0 }}>
+              <input type="checkbox" style={{ opacity: 0, width: 0, height: 0, position: 'absolute' }} />
+              <span style={{ position: 'absolute', inset: 0, background: 'var(--border)', borderRadius: 9999, cursor: 'pointer' }}>
+                <span style={{ position: 'absolute', width: 16, height: 16, borderRadius: '50%', background: '#fff', top: 3, left: 3, boxShadow: '0 1px 3px rgba(0,0,0,.15)' }} />
+              </span>
+            </label>
+          </div>
+          <div>
+            <div style={{ fontSize: 12, fontWeight: 500, color: 'var(--t2)', marginBottom: 8 }}>Active Sessions</div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {/* TODO: trpc.security.getSessions.useQuery() */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 12px', background: '#F5F5F5', borderRadius: 8, fontSize: 12 }}>
+                <span>Mac · Chrome · Current session</span>
+                <span style={{ color: '#16A34A', fontSize: 11, fontWeight: 500 }}>Current</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 12px', background: '#F5F5F5', borderRadius: 8, fontSize: 12 }}>
+                <span>iPhone · Safari · Mobile</span>
+                <button onClick={() => { /* TODO: trpc.security.revokeSession.useMutation() */ }} style={{ fontSize: 11, color: 'var(--err)', background: 'none', border: 'none', cursor: 'pointer' }}>Revoke</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Danger Zone tab ── */}
+      {tab === 'danger' && (
+        <div style={{ background: 'var(--surface)', border: '1px solid #FCA5A5', borderRadius: 14, padding: 18, maxWidth: 600, display: 'flex', flexDirection: 'column', gap: 16 }}>
+          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, paddingBottom: 16, borderBottom: '1px solid #FCA5A5' }}>
+            <span style={{ fontSize: 20, flexShrink: 0, marginTop: 2 }}>⚠️</span>
+            <div>
+              <div style={{ fontWeight: 600, color: 'var(--err)', marginBottom: 4 }}>Danger Zone</div>
+              <div style={{ fontSize: 12, color: 'var(--t3)' }}>These actions are irreversible. Proceed with extreme caution.</div>
+            </div>
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div>
+              <div style={{ fontWeight: 500 }}>Reset All Budgets</div>
+              <div style={{ fontSize: 11, color: 'var(--t3)' }}>Set all virtual key spend counters to $0</div>
+            </div>
+            <button
+              onClick={() => {
+                if (typeof window !== 'undefined' && window.confirm('Reset all virtual key budget counters? This cannot be undone.')) {
+                  // TODO: trpc.virtualKey.resetAllBudgets.useMutation() — loop updateBudget for all keys
+                }
+              }}
+              style={{ padding: '7px 14px', borderRadius: 8, border: '1px solid var(--err)', color: 'var(--err)', background: 'transparent', cursor: 'pointer', fontSize: 12, fontWeight: 500 }}>
+              Reset Budgets
+            </button>
+          </div>
+          <div style={{ height: 1, background: '#FCA5A5' }} />
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div>
+              <div style={{ fontWeight: 500 }}>Revoke All Virtual Keys</div>
+              <div style={{ fontSize: 11, color: 'var(--t3)' }}>Immediately invalidate every virtual key</div>
+            </div>
+            <button
+              onClick={() => {
+                if (typeof window !== 'undefined' && window.confirm('Revoke ALL virtual keys? This will immediately block all API requests.')) {
+                  // TODO: trpc.virtualKey.revokeAll.useMutation()
+                }
+              }}
+              style={{ padding: '7px 14px', borderRadius: 8, border: '1px solid var(--err)', color: 'var(--err)', background: 'transparent', cursor: 'pointer', fontSize: 12, fontWeight: 500 }}>
+              Revoke All
+            </button>
+          </div>
+          <div style={{ height: 1, background: '#FCA5A5' }} />
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div>
+              <div style={{ fontWeight: 500, color: 'var(--err)' }}>Delete Organization</div>
+              <div style={{ fontSize: 11, color: 'var(--t3)' }}>Permanently delete all data. Cannot be undone.</div>
+            </div>
+            <button
+              onClick={() => {
+                if (typeof window !== 'undefined' && window.confirm('Delete this organization? ALL DATA will be permanently destroyed. Type "DELETE" to confirm.')) {
+                  // TODO: trpc.workspace.deleteWorkspace.useMutation()
+                }
+              }}
+              style={{ padding: '7px 14px', borderRadius: 8, background: 'var(--err)', color: '#fff', border: 'none', cursor: 'pointer', fontSize: 12, fontWeight: 500 }}>
+              Delete Organization
+            </button>
           </div>
         </div>
       )}

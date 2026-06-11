@@ -1,11 +1,39 @@
-Day 23 | 2026-06-11
-Done: BudgetService — DragonflyDB INCRBYFLOAT spend counters (per-key + per-workspace), getBudgetCap with cache, cache invalidation on budget cap update, incrementSpend wired into ingestion worker
-Tests: 38 shared / 5 worker — all passing. tsc clean on shared, worker, web.
-Next: budgetEnforcer middleware — Day 24 (gateway INCRBYFLOAT enforcement, 429 before provider call)
+Day 24 | 2026-06-11
+Done: budgetEnforcer middleware (real INCRBYFLOAT enforcement, 429 before provider call), budget tRPC router (key + workspace status), budget dashboard page with color-coded progress bars
+Tests: 38 shared / 58 gateway / 5 worker — all passing. tsc clean on gateway, web.
+Next: Day 25 (TBD)
 
 ---
 
 ## Completed days
+
+### Day 24 — 2026-06-11
+`gateway/src/middlewares/budgetEnforcer.ts` (replaced stub):
+- `getBudgetCap(ctx.workspaceId)` — DragonflyDB-cached workspace cap
+- Fast path: both caps null → `next()` immediately, no spend read (common case, <1ms)
+- `getRemainingBudget(virtualKeyId, workspaceId, keyCap, wsCap)` — single mget round trip
+- Key cap check: `keyRemaining <= 0` → BudgetExceededError with formatted message including Spent and Cap
+- Workspace cap check: `wsRemaining <= 0` → BudgetExceededError; fires independently of key cap
+- Provider never called when 429 returned — no billing charge
+
+`web/src/server/api/routers/budget.ts` (new):
+- `getKeyBudgetStatus`: findByWorkspace → filter budget_cap !== null → parallel getCurrentSpend → `{ keyId, keyName, provider, spend, cap, remaining, percentage }`
+- `getWorkspaceBudgetStatus`: getBudgetCap → null shortcut → getCurrentSpend('_', wsId) → `{ cap, spend, remaining, percentage }` or null
+- Both use protectedMemberProcedure
+
+`web/src/app/(dashboard)/dashboard/budget/page.tsx` (new):
+- Workspace budget card (if cap set): progress bar, green/yellow/red at 80%/100%
+- Per-key budget cards: provider badge, same color coding
+- Empty state: links to /dashboard/keys and /dashboard/settings when no caps configured
+
+`web/src/components/DashboardNav.tsx`: Budget → /dashboard/budget nav item added
+`web/src/server/api/root.ts`: `budget: budgetRouter` added to appRouter
+
+Design notes:
+- Fast path skip of spend read is the hot path optimization — most keys have no caps
+- Both key cap and workspace cap are independent hard limits — either one at or below zero returns 429
+- `keyRemaining <= 0` not `< 0` — exactly zero means the cap is exhausted
+- wsCap changes take effect within 300s due to getBudgetCap TTL (documented SLA from Day 23)
 
 ### Day 23 — 2026-06-11
 `packages/shared/src/services/budgetService.ts`:
@@ -392,7 +420,7 @@ Total: 41 gateway tests passing.
 
 | File | Status |
 |------|--------|
-| gateway/src/middlewares/budgetEnforcer.ts | stub — Day 24: wire getRemainingBudget + 429 enforcement |
+| gateway/src/middlewares/budgetEnforcer.ts | DONE — Day 24 |
 | gateway/src/index.ts POST handler | DONE — proxyHandler/streamHandler wired |
 | worker/ | DONE — ingestionProcessor + index.ts with SIGTERM shutdown |
 | web/ | Next.js scaffold only |

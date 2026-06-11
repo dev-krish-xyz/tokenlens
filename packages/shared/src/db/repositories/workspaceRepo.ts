@@ -63,3 +63,8 @@ export async function getBudgetCap(workspaceId: string): Promise<number | null> 
 export async function invalidateBudgetCapCache(workspaceId: string): Promise<void> {
   await dragonflyClient.del(`wscap:${workspaceId}`)
 }
+
+export async function listAllWorkspaceIds(): Promise<string[]> {
+  const rows = await db.select({ id: workspaces.id }).from(workspaces)
+  return rows.map((r) => r.id)
+}

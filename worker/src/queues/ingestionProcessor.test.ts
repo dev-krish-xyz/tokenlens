@@ -12,6 +12,8 @@ const mockIncrementSpend = mock(async (_keyId: string, _wsId: string, _cost: num
 mock.module('@tokenlens/shared', () => ({
   calculateCost,
   dragonflyClientForBullMQ: { host: 'localhost', port: 6379 },
+  dragonflyClient: { get: mock(async () => null), setex: mock(async () => 'OK') },
+  clickhouseClient: { query: mock(async () => ({ json: async () => [] })) },
 }))
 
 mock.module('@tokenlens/shared/pricingRepo', () => ({
@@ -24,6 +26,7 @@ mock.module('@tokenlens/shared/clickhouse/writer', () => ({
 
 mock.module('@tokenlens/shared/services/budgetService', () => ({
   incrementSpend: mockIncrementSpend,
+  getCurrentSpend: mock(async () => ({ keySpend: 0, wsSpend: 0 })),
 }))
 
 const { processIngestionJob } = await import('./ingestionProcessor.ts')

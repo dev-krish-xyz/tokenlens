@@ -5,6 +5,7 @@ import { z } from 'zod';
 const result = z
   .object({
     WORKER_CONCURRENCY: z.coerce.number().default(10),
+    RESEND_API_KEY: z.string().optional(),
   })
   .safeParse(process.env);
 

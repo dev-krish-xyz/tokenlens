@@ -13,3 +13,20 @@ export interface IngestionJobData {
   statusCode: number
   createdAt: string
 }
+
+export interface AlertJobData {
+  type: 'budget' | 'anomaly' | 'dead_key'
+  workspaceId: string
+  virtualKeyId: string
+  keyName: string
+  spend?: number
+  cap?: number
+  percentage?: number
+  baseline?: number
+  multiplier?: string
+}
+
+export interface AnomalyJobData {
+  virtualKeyId: string
+  workspaceId: string
+}

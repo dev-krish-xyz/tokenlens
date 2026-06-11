@@ -2,6 +2,7 @@ import type { Job } from 'bullmq'
 import { findByPattern } from '@tokenlens/shared/pricingRepo'
 import { calculateCost } from '@tokenlens/shared'
 import { clickhouseWriter } from '@tokenlens/shared/clickhouse/writer'
+import { incrementSpend } from '@tokenlens/shared/services/budgetService'
 import type { IngestionJobData } from '@tokenlens/shared/queues/types'
 
 export async function processIngestionJob(job: Job<IngestionJobData>): Promise<void> {
@@ -26,4 +27,10 @@ export async function processIngestionJob(job: Job<IngestionJobData>): Promise<v
     status_code: job.data.statusCode,
     created_at: job.data.createdAt,
   })
+
+  try {
+    await incrementSpend(job.data.virtualKeyId, job.data.workspaceId, costUsd)
+  } catch (err) {
+    console.error('[ingestionProcessor] incrementSpend failed (non-fatal):', err)
+  }
 }

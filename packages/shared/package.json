@@ -12,7 +12,9 @@
     "./queues/definitions": "./src/queues/definitions.ts",
     "./queues/types": "./src/queues/types.ts",
     "./workspaceRepo": "./src/db/repositories/workspaceRepo.ts",
-    "./clickhouse/queries": "./src/clickhouse/queries.ts"
+    "./workspaceMemberRepo": "./src/db/repositories/workspaceMemberRepo.ts",
+    "./clickhouse/queries": "./src/clickhouse/queries.ts",
+    "./services/budgetService": "./src/services/budgetService.ts"
   },
   "scripts": {
     "test": "bun test",

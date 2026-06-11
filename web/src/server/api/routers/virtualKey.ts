@@ -1,11 +1,11 @@
 import { z } from 'zod'
 import { TRPCError } from '@trpc/server'
-import { protectedWorkspaceProcedure, router } from '../trpc.ts'
+import { protectedWorkspaceProcedure, protectedMemberProcedure, router } from '../trpc.ts'
 import { encrypt } from '@tokenlens/shared/keyVault'
 import { findByWorkspace, create, softDelete, updateBudget } from '@tokenlens/shared/virtualKeyRepo'
 
 export const virtualKeyRouter = router({
-  create: protectedWorkspaceProcedure
+  create: protectedMemberProcedure
     .input(
       z.object({
         name: z.string().min(1).max(100),
@@ -38,7 +38,7 @@ export const virtualKeyRouter = router({
     findByWorkspace(ctx.workspaceId)
   ),
 
-  delete: protectedWorkspaceProcedure
+  delete: protectedMemberProcedure
     .input(z.object({ id: z.string() }))
     .mutation(async ({ ctx, input }) => {
       await softDelete(input.id, ctx.workspaceId)

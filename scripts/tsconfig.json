@@ -1,0 +1,22 @@
+{
+  "extends": "../tsconfig.base.json",
+  "compilerOptions": {
+    "types": ["bun"],
+    "allowImportingTsExtensions": true,
+    "paths": {
+      "@tokenlens/shared": ["../packages/shared/src/index.ts"],
+      "@tokenlens/shared/keyVault": ["../packages/shared/src/services/keyVault.ts"],
+      "@tokenlens/shared/virtualKeyRepo": [
+        "../packages/shared/src/db/repositories/virtualKeyRepo.ts"
+      ],
+      "@tokenlens/shared/clickhouse/queries": [
+        "../packages/shared/src/clickhouse/queries.ts"
+      ],
+      "@tokenlens/shared/queues/definitions": [
+        "../packages/shared/src/queues/definitions.ts"
+      ],
+      "@tokenlens/shared/queues/types": ["../packages/shared/src/queues/types.ts"]
+    }
+  },
+  "include": ["."]
+}

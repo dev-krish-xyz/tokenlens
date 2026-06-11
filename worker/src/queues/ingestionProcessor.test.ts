@@ -7,6 +7,7 @@ import type { ModelPricing } from '../../../packages/shared/src/db/schema.ts'
 
 const mockFindByPattern = mock(async (_provider: string, _model: string): Promise<ModelPricing | null> => null)
 const mockAdd = mock((_row: RequestLogRow) => {})
+const mockIncrementSpend = mock(async (_keyId: string, _wsId: string, _cost: number) => {})
 
 mock.module('@tokenlens/shared', () => ({
   calculateCost,
@@ -19,6 +20,10 @@ mock.module('@tokenlens/shared/pricingRepo', () => ({
 
 mock.module('@tokenlens/shared/clickhouse/writer', () => ({
   clickhouseWriter: { add: mockAdd, flush: mock(async () => {}) },
+}))
+
+mock.module('@tokenlens/shared/services/budgetService', () => ({
+  incrementSpend: mockIncrementSpend,
 }))
 
 const { processIngestionJob } = await import('./ingestionProcessor.ts')

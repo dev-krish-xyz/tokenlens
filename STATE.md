@@ -1,11 +1,102 @@
-Day 20 | 2026-06-07
-Done: request logs table (Developer View) + per-customer cost attribution
-Tests: 47 gateway / 23 shared / 5 worker — all passing
-Next: budgetEnforcer middleware (INCRBYFLOAT logic) — Day 21
+Day 23 | 2026-06-11
+Done: BudgetService — DragonflyDB INCRBYFLOAT spend counters (per-key + per-workspace), getBudgetCap with cache, cache invalidation on budget cap update, incrementSpend wired into ingestion worker
+Tests: 38 shared / 5 worker — all passing. tsc clean on shared, worker, web.
+Next: budgetEnforcer middleware — Day 24 (gateway INCRBYFLOAT enforcement, 429 before provider call)
 
 ---
 
 ## Completed days
+
+### Day 23 — 2026-06-11
+`packages/shared/src/services/budgetService.ts`:
+- `incrementSpend(virtualKeyId, workspaceId, costUsd)`: skip if costUsd ≤ 0; pipeline INCRBYFLOAT on `spend:key:{YYYYMM}:{keyId}` + `spend:ws:{YYYYMM}:{wsId}`; EXPIRE 35 days (idempotent TTL reset)
+- `getCurrentSpend(virtualKeyId, workspaceId)`: `dragonflyClient.mget` both keys in one call; returns floats (0 if key missing)
+- `getRemainingBudget(virtualKeyId, workspaceId, keyCap, wsCap)`: skips DragonflyDB entirely when both caps null (hot path optimization)
+- New subpath export: `@tokenlens/shared/services/budgetService`
+
+`packages/shared/src/db/repositories/workspaceRepo.ts`:
+- `getBudgetCap(workspaceId)`: DragonflyDB `wscap:{workspaceId}` → Postgres fallback → cache result 300s; null cap stored as string `'null'` (distinguishable from cache miss)
+- `invalidateBudgetCapCache(workspaceId)`: DEL `wscap:{workspaceId}`
+
+`worker/src/queues/ingestionProcessor.ts`:
+- After `clickhouseWriter.add()`: call `await incrementSpend(virtualKeyId, workspaceId, costUsd)` in try-catch; failure logged but non-fatal (analytics not held hostage to counter updates)
+
+`worker/src/queues/ingestionProcessor.test.ts`:
+- Added `mock.module('@tokenlens/shared/services/budgetService', ...)` — prevents real DragonflyDB calls in tests
+
+`web/src/server/api/routers/workspace.ts`:
+- `updateBudgetCap` procedure now calls `invalidateBudgetCapCache(ctx.workspaceId)` after Postgres update — stale cap evicted immediately
+
+`packages/shared/src/services/budgetService.test.ts`:
+- 15 tests covering incrementSpend (zero skip, key format, TTL), getCurrentSpend (cache miss, floats), getRemainingBudget (no-cap shortcut, over-budget negative), getBudgetCap (cache hit/miss, null cap serialization)
+
+Design notes:
+- INCRBYFLOAT is atomic — no locking needed; both increments in single pipeline round-trip
+- EXPIRE idempotent on every increment — active keys stay warm without cron cleanup
+- `'null'` string sentinel prevents cache miss vs. null budget cap ambiguity
+- incrementSpend non-fatal in worker — ClickHouse analytics must not fail if DragonflyDB is momentarily unavailable
+
+### Day 22 — 2026-06-11
+`packages/shared/src/types.ts`:
+- `WorkspaceRole` type: `'admin' | 'member' | 'viewer'`
+- `ROLE_HIERARCHY`: `{ admin: 3, member: 2, viewer: 1 }` — numeric comparisons
+- `hasMinimumRole(userRole, required)`: pure function, barrel-exported
+
+`packages/shared/src/db/repositories/workspaceMemberRepo.ts` (new):
+- `getRoleForUser(workspaceId, userId)`: inner join workspace_members + workspaces, returns role or null
+- `listMembers(workspaceId)`: joins workspace_members + users, returns `{ userId, email, name, role, joinedAt }`
+- `updateRole(workspaceId, targetUserId, newRole, requestingUserId)`: throws if self-modification attempted
+- `removeMember(workspaceId, targetUserId, requestingUserId)`: throws if self-removal attempted
+- Subpath export: `@tokenlens/shared/workspaceMemberRepo`
+
+`web/src/server/api/trpc.ts`:
+- `userRole: WorkspaceRole | null` added to Context type
+- `createContext()` calls `workspaceMemberRepo.getRoleForUser` after workspace lookup
+- `protectedMemberProcedure`: extends protectedWorkspaceProcedure, requires `hasMinimumRole(role, 'member')`
+- `protectedAdminProcedure`: extends protectedWorkspaceProcedure, requires `role === 'admin'`
+
+`web/src/server/api/routers/workspace.ts` (new):
+- `getSettings`: protectedWorkspaceProcedure — returns id, name, plan, budgetCap (decimal→float), memberCount
+- `updateName`: protectedAdminProcedure — min 1 / max 100
+- `updateBudgetCap`: protectedAdminProcedure — positive or null; clears wscap cache
+- `listMembers`: protectedMemberProcedure — full member list with roles
+- `updateMemberRole`: protectedAdminProcedure — enum('member','viewer') only; no admin promotion in MVP
+- `removeMember`: protectedAdminProcedure — triggers self-removal guard in repo
+
+`web/src/server/api/routers/virtualKey.ts`:
+- `create` + `delete` upgraded from protectedWorkspaceProcedure → protectedMemberProcedure
+
+`web/src/app/(dashboard)/dashboard/settings/page.tsx` (new):
+- Workspace name + budget cap inputs with inline Save/error/success states
+- Team members table with role badges (admin purple, member blue, viewer gray)
+- Inline role `<select>` for non-admin members; remove confirmation modal
+- Server enforces RBAC — client shows inputs for all roles (FORBIDDEN surfaces as inline error)
+
+`web/src/components/DashboardNav.tsx`: Settings nav link added
+
+Design notes:
+- Role checks EXCLUSIVELY in procedure middleware — service functions role-agnostic
+- Admin role not assignable via updateMemberRole (only one admin per workspace, set at creation)
+- decimal budget_cap from Postgres → parseFloat() in router, String() on write
+
+### Day 21 — 2026-06-07
+`scripts/e2e.test.ts`:
+- Step 1: Postgres tables exist (6), model_pricing has 10 seed rows, ClickHouse request_logs exists, DragonflyDB pongs
+- Step 2: Create workspace+user+member directly in DB; encrypt/decrypt virtual key (AES-256-GCM); virtualKeyRepo.findById; DragonflyDB cache miss→populate→hit cycle
+- Step 3: Gateway health 200; no-auth 401; invalid-key-format 401; SSRF base_url 400 (requestValidator fires before virtualKeyResolver); rate limit 60→200 then 429
+- Step 4: Enqueue IngestionJobData directly to BullMQ; wait 5s; verify ClickHouse row; verify gpt-4o-mini cost 0.000045 (100 in + 50 out, tolerance 0.000001)
+- Step 5: getDailySpend for E2E workspace > 0; getPerCustomerCost finds e2e-customer-1; workspace isolation (non-existent ID → empty)
+- afterAll: cleans all Postgres test rows; DragonflyDB cache key; ClickHouse rows left with featureTag='e2e-test'; `process.exit(0)` force-closes all connections
+
+`scripts/test-setup.ts`: env var defaults for local docker-compose stack
+`scripts/tsconfig.json`: extends tsconfig.base.json; paths for all @tokenlens/shared subpath imports
+`scripts/package.json`: workspace package `@tokenlens/scripts`; drizzle-orm pinned to 0.43.1 to match packages/shared
+`bunfig.toml` (root): `[test] preload = ["./scripts/test-setup.ts"]`
+
+Design notes:
+- virtualKeyId uses `crypto.randomUUID()` (not generateVirtualKeyId) — virtual_keys.id is uuid type in Postgres; tl-vk- prefix would fail constraint
+- SSRF test works with UUID bearer because requestValidator (#3) runs before virtualKeyResolver (#4)
+- Root bunfig.toml preload only affects `bun test` run from repo root; per-package tests use their own bunfig.toml
 
 ### Day 20 — 2026-06-07
 `packages/shared/src/clickhouse/queries.ts`:
@@ -301,7 +392,7 @@ Total: 41 gateway tests passing.
 
 | File | Status |
 |------|--------|
-| gateway/src/middlewares/budgetEnforcer.ts | stub — awaits INCRBYFLOAT logic |
+| gateway/src/middlewares/budgetEnforcer.ts | stub — Day 24: wire getRemainingBudget + 429 enforcement |
 | gateway/src/index.ts POST handler | DONE — proxyHandler/streamHandler wired |
 | worker/ | DONE — ingestionProcessor + index.ts with SIGTERM shutdown |
 | web/ | Next.js scaffold only |

@@ -1,7 +1,7 @@
 {
   "name": "tokenlens",
   "private": true,
-  "workspaces": ["gateway", "web", "worker", "packages/*"],
+  "workspaces": ["gateway", "web", "worker", "packages/*", "scripts"],
   "scripts": {
     "dev": "turbo dev",
     "build": "turbo build",

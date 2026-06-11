@@ -6,6 +6,7 @@ const result = z
   .object({
     PORT: z.coerce.number().default(8787),
     GATEWAY_ENV: z.enum(['production', 'staging', 'dev']).default('dev'),
+    NEXT_PUBLIC_APP_URL: z.string().url().default('http://localhost:3000'),
   })
   .safeParse(process.env);
 

@@ -13,7 +13,9 @@ const result = z
     // Optional — Stripe/Resend not required for auth
     STRIPE_SECRET_KEY: z.string().optional(),
     STRIPE_WEBHOOK_SECRET: z.string().optional(),
+    STRIPE_PRICE_ID_PRO: z.string().optional(),
     RESEND_API_KEY: z.string().optional(),
+    NEXT_PUBLIC_APP_URL: z.string().url().default('http://localhost:3000'),
   })
   .safeParse(process.env);
 

@@ -15,9 +15,11 @@ export const workspaces = pgTable('workspaces', {
   id: uuid('id').primaryKey().defaultRandom(),
   name: text('name').notNull(),
   plan: text('plan').default('free'),
+  plan_tier: text('plan_tier').notNull().default('free'),
   budget_cap: decimal('budget_cap', { precision: 10, scale: 4 }),
   slack_webhook_url: text('slack_webhook_url'),
   stripe_customer_id: text('stripe_customer_id'),
+  stripe_subscription_id: text('stripe_subscription_id'),
   created_at: timestamp('created_at').defaultNow(),
 });
 

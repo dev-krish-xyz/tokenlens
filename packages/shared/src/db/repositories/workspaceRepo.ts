@@ -1,4 +1,4 @@
-import { eq } from 'drizzle-orm'
+import { eq, type InferInsertModel } from 'drizzle-orm'
 import { db } from '../client.ts'
 import { dragonflyClient } from '../../dragonfly/client.ts'
 import { workspaces, workspace_members, users } from '../schema.ts'
@@ -62,6 +62,22 @@ export async function getBudgetCap(workspaceId: string): Promise<number | null> 
 
 export async function invalidateBudgetCapCache(workspaceId: string): Promise<void> {
   await dragonflyClient.del(`wscap:${workspaceId}`)
+}
+
+export async function update(
+  id: string,
+  fields: Partial<Omit<InferInsertModel<typeof workspaces>, 'id' | 'created_at'>>,
+): Promise<void> {
+  await db.update(workspaces).set(fields).where(eq(workspaces.id, id))
+}
+
+export async function findByStripeSubId(subId: string): Promise<Workspace | null> {
+  const rows = await db
+    .select()
+    .from(workspaces)
+    .where(eq(workspaces.stripe_subscription_id, subId))
+    .limit(1)
+  return rows[0] ?? null
 }
 
 export async function listAllWorkspaceIds(): Promise<string[]> {

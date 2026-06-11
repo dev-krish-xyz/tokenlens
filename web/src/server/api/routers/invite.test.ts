@@ -31,6 +31,8 @@ mock.module('@tokenlens/shared/workspaceRepo', () => ({
   getBudgetCap: mock(async () => null),
   invalidateBudgetCapCache: mock(async () => {}),
   listAllWorkspaceIds: mock(async () => []),
+  update: mock(async () => {}),
+  findByStripeSubId: mock(async () => null),
 }))
 
 const mockGetRoleForUser = mock(async (): Promise<'admin' | 'member' | 'viewer' | null> => null)
@@ -75,6 +77,26 @@ mock.module('../../../lib/inviteEmail.ts', () => ({
   sendInviteEmail: mockSendInviteEmail,
 }))
 
+// Defensive mocks for modules used by route.ts (same worker, i < r)
+mock.module('@tokenlens/shared/services/planService', () => ({
+  getPlanTier: mock(async () => 'free'),
+  invalidatePlanCache: mock(async () => {}),
+  isProOrAbove: mock(() => false),
+}))
+
+mock.module('@tokenlens/shared/services/usageService', () => ({
+  getMonthlyRequestCount: mock(async () => 0),
+}))
+
+mock.module('stripe', () => {
+  const StripeClass = class {
+    webhooks = { constructEvent: mock(() => { throw new Error('not configured') }) }
+    customers = { create: mock(async () => ({ id: 'cus_new' })) }
+    checkout = { sessions: { create: mock(async () => ({ url: null })) } }
+  }
+  return { default: StripeClass }
+})
+
 // Session mock (trpc.ts imports this at module level)
 mock.module('../../../lib/session.ts', () => ({
   getSession: mock(async () => null),
@@ -83,11 +105,16 @@ mock.module('../../../lib/session.ts', () => ({
 }))
 
 // env mock (invite.ts imports env.ts transitively)
+// Must include ALL vars any web test file needs — invite.ts (i) wins mock registration over route.ts (r)
 mock.module('../../../env.ts', () => ({
   env: {
     BETTER_AUTH_URL: 'http://localhost:3000',
     RESEND_API_KEY: 'test-key',
     NEXT_PUBLIC_GATEWAY_URL: 'http://localhost:8787',
+    STRIPE_SECRET_KEY: 'sk_test_fake',
+    STRIPE_WEBHOOK_SECRET: 'whsec_fake',
+    STRIPE_PRICE_ID_PRO: 'price_fake',
+    NEXT_PUBLIC_APP_URL: 'http://localhost:3000',
   },
 }))
 

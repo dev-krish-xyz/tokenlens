@@ -51,9 +51,11 @@ const BASE_WORKSPACE: Workspace = {
   id: 'ws-001',
   name: "alice's workspace",
   plan: 'free',
+  plan_tier: 'free',
   budget_cap: null,
   slack_webhook_url: null,
   stripe_customer_id: null,
+  stripe_subscription_id: null,
   created_at: new Date(),
 }
 

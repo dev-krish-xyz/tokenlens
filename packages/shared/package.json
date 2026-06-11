@@ -16,7 +16,9 @@
     "./clickhouse/queries": "./src/clickhouse/queries.ts",
     "./services/budgetService": "./src/services/budgetService.ts",
     "./alertConfigRepo": "./src/db/repositories/alertConfigRepo.ts",
-    "./inviteRepo": "./src/db/repositories/inviteRepo.ts"
+    "./inviteRepo": "./src/db/repositories/inviteRepo.ts",
+    "./services/planService": "./src/services/planService.ts",
+    "./services/usageService": "./src/services/usageService.ts"
   },
   "scripts": {
     "test": "bun test",

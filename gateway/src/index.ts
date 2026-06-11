@@ -6,6 +6,7 @@ import { rateLimiter } from './middlewares/rateLimiter.ts';
 import { requestValidator } from './middlewares/requestValidator.ts';
 import { virtualKeyResolver } from './middlewares/virtualKeyResolver.ts';
 import { budgetEnforcer } from './middlewares/budgetEnforcer.ts';
+import { freeTierEnforcer } from './middlewares/freeTierEnforcer.ts';
 import { proxyHandler } from './handlers/proxy.ts';
 import { streamHandler } from './handlers/stream.ts';
 import type { GatewayVariables } from './types.ts';
@@ -26,6 +27,7 @@ app.use('*', requestIdMiddleware);
 app.use('*', rateLimiter);
 app.use('/v1/*', requestValidator);
 app.use('/v1/*', virtualKeyResolver);
+app.use('/v1/*', freeTierEnforcer);
 app.use('/v1/*', budgetEnforcer);
 
 app.get('/health', (c) => {

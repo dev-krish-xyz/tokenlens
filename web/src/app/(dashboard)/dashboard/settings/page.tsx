@@ -2,6 +2,14 @@
 import { useState, useEffect } from 'react'
 import { trpc } from '../../../../trpc/client.ts'
 
+function formatRelativeTime(date: Date | string): string {
+  const ms = new Date(date).getTime() - Date.now()
+  const hours = Math.round(ms / (1000 * 60 * 60))
+  if (hours <= 0) return 'expired'
+  if (hours === 1) return 'in 1 hour'
+  return `in ${hours} hours`
+}
+
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <div className="rounded-xl border border-gray-200 bg-white p-6">
@@ -37,12 +45,20 @@ export default function SettingsPage() {
   const utils = trpc.useUtils()
   const { data: settings, isLoading: settingsLoading } = trpc.workspace.getSettings.useQuery()
   const { data: members, isLoading: membersLoading } = trpc.workspace.listMembers.useQuery()
+  const { data: pendingInvites } = trpc.invite.listPendingInvites.useQuery()
 
   const [name, setName] = useState('')
   const [budgetCap, setBudgetCap] = useState('')
   const [removeTarget, setRemoveTarget] = useState<string | null>(null)
   const [nameError, setNameError] = useState<string | null>(null)
   const [capError, setCapError] = useState<string | null>(null)
+
+  const [inviteDialogOpen, setInviteDialogOpen] = useState(false)
+  const [inviteEmail, setInviteEmail] = useState('')
+  const [inviteRole, setInviteRole] = useState<'member' | 'viewer'>('member')
+  const [inviteError, setInviteError] = useState<string | null>(null)
+  const [inviteSuccess, setInviteSuccess] = useState<string | null>(null)
+  const [revokeTarget, setRevokeTarget] = useState<string | null>(null)
 
   useEffect(() => {
     if (settings) setName(settings.name)
@@ -90,6 +106,26 @@ export default function SettingsPage() {
       setRemoveTarget(null)
       utils.workspace.listMembers.invalidate()
       utils.workspace.getSettings.invalidate()
+    },
+  })
+
+  const sendInviteMutation = trpc.invite.sendInvite.useMutation({
+    onSuccess: (data) => {
+      setInviteDialogOpen(false)
+      setInviteEmail('')
+      setInviteRole('member')
+      setInviteError(null)
+      setInviteSuccess(`Invite sent to ${data.email}`)
+      utils.invite.listPendingInvites.invalidate()
+      setTimeout(() => setInviteSuccess(null), 5000)
+    },
+    onError: (e) => setInviteError(e.message),
+  })
+
+  const revokeInviteMutation = trpc.invite.revokeInvite.useMutation({
+    onSuccess: () => {
+      setRevokeTarget(null)
+      utils.invite.listPendingInvites.invalidate()
     },
   })
 
@@ -260,6 +296,136 @@ export default function SettingsPage() {
           </div>
         )}
       </Section>
+
+      <Section title="Invite Members">
+        <div className="space-y-4">
+          {inviteSuccess && (
+            <p className="text-sm text-green-600">{inviteSuccess}</p>
+          )}
+          <div className="flex justify-end">
+            <button
+              onClick={() => { setInviteDialogOpen(true); setInviteError(null) }}
+              className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700"
+            >
+              Invite Member
+            </button>
+          </div>
+
+          {pendingInvites && pendingInvites.length > 0 ? (
+            <div className="overflow-hidden rounded-lg border border-gray-200">
+              <table className="w-full text-sm">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wide">Email</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wide">Role</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wide">Expires</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wide">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-200 bg-white">
+                  {pendingInvites.map((invite) => (
+                    <tr key={invite.id}>
+                      <td className="px-4 py-3 text-gray-900">{invite.email}</td>
+                      <td className="px-4 py-3">
+                        <RoleBadge role={invite.role} />
+                      </td>
+                      <td className="px-4 py-3 text-gray-500 text-xs">
+                        {formatRelativeTime(invite.expires_at)}
+                      </td>
+                      <td className="px-4 py-3">
+                        <button
+                          onClick={() => setRevokeTarget(invite.id)}
+                          className="text-xs text-red-600 hover:text-red-800"
+                        >
+                          Revoke
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <p className="text-sm text-gray-400">No pending invites.</p>
+          )}
+        </div>
+      </Section>
+
+      {inviteDialogOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+          <div className="rounded-xl bg-white p-6 shadow-xl w-full max-w-sm space-y-4">
+            <h3 className="text-base font-semibold text-gray-900">Invite Member</h3>
+            <div className="space-y-3">
+              <div className="space-y-1.5">
+                <label className="block text-sm font-medium text-gray-700">Email address</label>
+                <input
+                  type="email"
+                  value={inviteEmail}
+                  onChange={(e) => { setInviteEmail(e.target.value); setInviteError(null) }}
+                  placeholder="colleague@company.com"
+                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <label className="block text-sm font-medium text-gray-700">Role</label>
+                <select
+                  value={inviteRole}
+                  onChange={(e) => setInviteRole(e.target.value as 'member' | 'viewer')}
+                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                >
+                  <option value="member">Member</option>
+                  <option value="viewer">Viewer</option>
+                </select>
+              </div>
+              {inviteError && (
+                <p className="text-xs text-red-600">{inviteError}</p>
+              )}
+            </div>
+            <div className="flex gap-3 justify-end">
+              <button
+                onClick={() => { setInviteDialogOpen(false); setInviteError(null) }}
+                className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => {
+                  setInviteError(null)
+                  sendInviteMutation.mutate({ email: inviteEmail, role: inviteRole })
+                }}
+                disabled={!inviteEmail.trim() || sendInviteMutation.isPending}
+                className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {sendInviteMutation.isPending ? 'Sending…' : 'Send Invite'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {revokeTarget && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+          <div className="rounded-xl bg-white p-6 shadow-xl w-full max-w-sm space-y-4">
+            <h3 className="text-base font-semibold text-gray-900">Revoke invite?</h3>
+            <p className="text-sm text-gray-600">The invite link will stop working immediately.</p>
+            <div className="flex gap-3 justify-end">
+              <button
+                onClick={() => setRevokeTarget(null)}
+                className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => revokeInviteMutation.mutate({ id: revokeTarget })}
+                disabled={revokeInviteMutation.isPending}
+                className="rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-50"
+              >
+                {revokeInviteMutation.isPending ? 'Revoking…' : 'Revoke'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {removeTarget && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">

@@ -110,3 +110,26 @@ export type NewModelPricing = InferInsertModel<typeof model_pricing>;
 
 export type AlertConfig = InferSelectModel<typeof alert_configs>;
 export type NewAlertConfig = InferInsertModel<typeof alert_configs>;
+
+export const workspace_invites = pgTable(
+  'workspace_invites',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    workspace_id: uuid('workspace_id')
+      .notNull()
+      .references(() => workspaces.id),
+    email: text('email').notNull(),
+    role: text('role').notNull().default('member'),
+    token: text('token').notNull().unique(),
+    expires_at: timestamp('expires_at').notNull(),
+    accepted_at: timestamp('accepted_at'),
+    created_at: timestamp('created_at').defaultNow(),
+  },
+  (t) => [
+    index('idx_workspace_invites_token').on(t.token),
+    index('idx_workspace_invites_workspace_id').on(t.workspace_id),
+  ],
+);
+
+export type WorkspaceInvite = InferSelectModel<typeof workspace_invites>;
+export type NewWorkspaceInvite = InferInsertModel<typeof workspace_invites>;

@@ -73,3 +73,13 @@ export async function removeMember(
     .delete(workspace_members)
     .where(and(eq(workspace_members.workspace_id, workspaceId), eq(workspace_members.user_id, targetUserId)))
 }
+
+export async function isMemberByEmail(workspaceId: string, email: string): Promise<boolean> {
+  const rows = await db
+    .select({ userId: workspace_members.user_id })
+    .from(workspace_members)
+    .innerJoin(users, eq(users.id, workspace_members.user_id))
+    .where(and(eq(workspace_members.workspace_id, workspaceId), eq(users.email, email)))
+    .limit(1)
+  return rows.length > 0
+}

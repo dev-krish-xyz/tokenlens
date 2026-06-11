@@ -16,6 +16,8 @@ mock.module('../../dragonfly/client.ts', () => ({
 mock.module('drizzle-orm', () => ({
   eq: (col: unknown, val: unknown) => ({ _op: 'eq', col, val }),
   and: (...conds: unknown[]) => ({ _op: 'and', conds }),
+  gt: (col: unknown, val: unknown) => ({ _op: 'gt', col, val }),
+  isNull: (col: unknown) => ({ _op: 'isNull', col }),
   asc: (col: unknown) => ({ _op: 'asc', col }),
   desc: (col: unknown) => ({ _op: 'desc', col }),
 }))

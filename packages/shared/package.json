@@ -15,7 +15,8 @@
     "./workspaceMemberRepo": "./src/db/repositories/workspaceMemberRepo.ts",
     "./clickhouse/queries": "./src/clickhouse/queries.ts",
     "./services/budgetService": "./src/services/budgetService.ts",
-    "./alertConfigRepo": "./src/db/repositories/alertConfigRepo.ts"
+    "./alertConfigRepo": "./src/db/repositories/alertConfigRepo.ts",
+    "./inviteRepo": "./src/db/repositories/inviteRepo.ts"
   },
   "scripts": {
     "test": "bun test",

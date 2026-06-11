@@ -2,127 +2,304 @@
 import { useSearchParams, useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import { trpc } from '../../../../trpc/client.ts'
+import { IconX, IconCheck } from '@tabler/icons-react'
 
 const MAX_FREE = 50_000
 
-function PlanBadge({ tier }: { tier: string }) {
-  const styles: Record<string, string> = {
-    free: 'bg-gray-100 text-gray-700',
-    pro: 'bg-blue-100 text-blue-700',
-    enterprise: 'bg-purple-100 text-purple-700',
-  }
-  return (
-    <span className={`inline-flex items-center rounded-full px-3 py-1 text-sm font-semibold capitalize ${styles[tier] ?? styles.free}`}>
-      {tier}
-    </span>
-  )
-}
-
-function Toast({ message, onDismiss }: { message: string; onDismiss: () => void }) {
-  return (
-    <div className="fixed bottom-4 right-4 z-50 flex items-center gap-3 rounded-lg bg-gray-900 px-4 py-3 text-sm text-white shadow-lg">
-      {message}
-      <button onClick={onDismiss} className="ml-2 text-gray-400 hover:text-white">✕</button>
-    </div>
-  )
+function barColor(pct: number): string {
+  if (pct >= 90) return 'var(--err)'
+  if (pct >= 70) return 'var(--warn)'
+  return 'var(--pri)'
 }
 
 export default function BillingPage() {
   const searchParams = useSearchParams()
   const router = useRouter()
   const [toast, setToast] = useState<string | null>(null)
+  const [toastType, setToastType] = useState<'success' | 'error'>('success')
 
   const { data, isLoading } = trpc.billing.getSubscriptionStatus.useQuery()
   const checkoutMutation = trpc.billing.createCheckoutSession.useMutation({
     onSuccess: ({ url }) => {
       if (url) window.location.href = url
     },
-    onError: (err) => setToast(`Error: ${err.message}`),
+    onError: (err) => {
+      setToastType('error')
+      setToast(`Error: ${err.message}`)
+    },
   })
 
   useEffect(() => {
     const success = searchParams.get('success')
     const canceled = searchParams.get('canceled')
     if (success === '1') {
+      setToastType('success')
       setToast("You're now on Pro!")
       router.replace('/dashboard/billing')
     } else if (canceled === '1') {
+      setToastType('error')
       setToast('Upgrade canceled')
       router.replace('/dashboard/billing')
     }
   }, [searchParams, router])
 
-  if (isLoading || !data) {
-    return (
-      <div className="p-8">
-        <div className="h-8 w-48 animate-pulse rounded bg-gray-200" />
-      </div>
-    )
-  }
-
-  const usedPct = Math.min(100, (data.requestsUsed / MAX_FREE) * 100)
+  const usedPct = data ? Math.min(100, (data.requestsUsed / MAX_FREE) * 100) : 0
 
   return (
-    <div className="mx-auto max-w-2xl space-y-6 p-8">
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900">Billing</h1>
-        <p className="mt-1 text-sm text-gray-500">Manage your plan and usage</p>
+    <div style={{ padding: 24 }}>
+      {/* Header */}
+      <div style={{ marginBottom: 20 }}>
+        <div style={{ fontSize: 17, fontWeight: 600, letterSpacing: '-0.01em' }}>Billing</div>
+        <div style={{ fontSize: 12, color: 'var(--t3)', marginTop: 2 }}>
+          Manage your plan and request usage
+        </div>
       </div>
 
-      <div className="rounded-xl border border-gray-200 bg-white p-6 space-y-4">
-        <div className="flex items-center justify-between">
-          <div>
-            <p className="text-sm font-medium text-gray-500">Current plan</p>
-            <div className="mt-1">
-              <PlanBadge tier={data.tier} />
-            </div>
-          </div>
+      {isLoading || !data ? (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          {[1, 2].map((i) => (
+            <div
+              key={i}
+              style={{
+                height: i === 1 ? 80 : 200,
+                background: 'var(--surface)',
+                border: '1px solid var(--border)',
+                borderRadius: 14,
+              }}
+            />
+          ))}
         </div>
-
-        {data.tier === 'free' ? (
-          <div className="space-y-4">
-            <div>
-              <div className="flex items-center justify-between text-sm mb-1">
-                <span className="text-gray-600">Requests this month</span>
-                <span className="font-medium text-gray-900">
-                  {data.requestsUsed.toLocaleString()} / {MAX_FREE.toLocaleString()}
-                </span>
-              </div>
-              <div className="h-2 w-full rounded-full bg-gray-100 overflow-hidden">
+      ) : (
+        <div style={{ maxWidth: 700, display: 'flex', flexDirection: 'column', gap: 16 }}>
+          {/* Plan card */}
+          <div
+            style={{
+              background: 'var(--surface)',
+              border: '1px solid var(--border)',
+              borderRadius: 14,
+              padding: 24,
+            }}
+          >
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                marginBottom: 20,
+              }}
+            >
+              <div>
+                <div style={{ fontSize: 12, color: 'var(--t3)', fontWeight: 500, marginBottom: 8 }}>
+                  Current plan
+                </div>
                 <div
-                  className={`h-full rounded-full transition-all ${usedPct >= 90 ? 'bg-red-500' : usedPct >= 70 ? 'bg-yellow-500' : 'bg-blue-500'}`}
-                  style={{ width: `${usedPct}%` }}
-                />
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    padding: '4px 14px',
+                    borderRadius: 9999,
+                    fontSize: 18,
+                    fontWeight: 700,
+                    fontFamily: 'monospace',
+                    background:
+                      data.tier === 'pro'
+                        ? 'var(--pri-m)'
+                        : data.tier === 'enterprise'
+                          ? '#F5F3FF'
+                          : '#F4F4F5',
+                    color:
+                      data.tier === 'pro'
+                        ? 'var(--pri)'
+                        : data.tier === 'enterprise'
+                          ? '#6D28D9'
+                          : 'var(--t2)',
+                    textTransform: 'capitalize',
+                  }}
+                >
+                  {data.tier === 'free' ? 'Starter' : data.tier === 'pro' ? 'Pro' : 'Enterprise'}
+                </div>
               </div>
-              {usedPct >= 90 && (
-                <p className="mt-1 text-xs text-red-600">
-                  Approaching free tier limit. Upgrade to avoid interruptions.
-                </p>
+              {data.tier !== 'free' && (
+                <div
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 6,
+                    padding: '6px 14px',
+                    borderRadius: 9999,
+                    background: '#DCFCE7',
+                    color: '#16A34A',
+                    fontSize: 12,
+                    fontWeight: 500,
+                  }}
+                >
+                  <IconCheck size={14} />
+                  Active
+                </div>
               )}
             </div>
 
-            <button
-              onClick={() => checkoutMutation.mutate()}
-              disabled={checkoutMutation.isPending}
-              className="w-full rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-50 transition-colors"
-            >
-              {checkoutMutation.isPending ? 'Redirecting to Stripe...' : 'Upgrade to Pro'}
-            </button>
-            <p className="text-xs text-center text-gray-400">
-              Pro plan: unlimited requests, priority support
-            </p>
-          </div>
-        ) : (
-          <div className="rounded-lg bg-blue-50 px-4 py-3">
-            <p className="text-sm font-medium text-blue-800">Pro Plan — Unlimited requests</p>
-            <p className="mt-0.5 text-xs text-blue-600">
-              You have unrestricted access to the gateway.
-            </p>
-          </div>
-        )}
-      </div>
+            {data.tier === 'free' ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                {/* Request usage */}
+                <div>
+                  <div
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      fontSize: 12,
+                      marginBottom: 6,
+                    }}
+                  >
+                    <span style={{ color: 'var(--t2)' }}>Requests this month</span>
+                    <span style={{ fontFamily: 'monospace', fontWeight: 500, color: 'var(--t1)' }}>
+                      {data.requestsUsed.toLocaleString()} / {MAX_FREE.toLocaleString()}
+                    </span>
+                  </div>
+                  <div
+                    style={{
+                      height: 8,
+                      background: 'var(--border)',
+                      borderRadius: 9999,
+                      overflow: 'hidden',
+                    }}
+                  >
+                    <div
+                      style={{
+                        height: '100%',
+                        borderRadius: 9999,
+                        background: barColor(usedPct),
+                        width: `${usedPct}%`,
+                        transition: 'width 0.3s',
+                      }}
+                    />
+                  </div>
+                  {usedPct >= 90 && (
+                    <div style={{ fontSize: 11, color: 'var(--err)', marginTop: 4 }}>
+                      Approaching free tier limit. Upgrade to avoid interruptions.
+                    </div>
+                  )}
+                </div>
 
-      {toast && <Toast message={toast} onDismiss={() => setToast(null)} />}
+                {/* Upgrade CTA */}
+                <button
+                  onClick={() => checkoutMutation.mutate()}
+                  disabled={checkoutMutation.isPending}
+                  style={{
+                    width: '100%',
+                    padding: '10px 20px',
+                    borderRadius: 8,
+                    background: 'var(--pri)',
+                    color: '#fff',
+                    fontSize: 13,
+                    fontWeight: 500,
+                    border: 'none',
+                    cursor: checkoutMutation.isPending ? 'not-allowed' : 'pointer',
+                    opacity: checkoutMutation.isPending ? 0.7 : 1,
+                  }}
+                >
+                  {checkoutMutation.isPending ? 'Redirecting to Stripe…' : 'Upgrade to Pro'}
+                </button>
+
+                <div style={{ fontSize: 11, textAlign: 'center', color: 'var(--t3)' }}>
+                  Pro plan: $49/mo · Unlimited requests · Priority support
+                </div>
+
+                {/* Feature comparison */}
+                <div
+                  style={{
+                    background: 'var(--bg)',
+                    borderRadius: 10,
+                    padding: '14px 16px',
+                    fontSize: 12,
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: 8,
+                  }}
+                >
+                  {[
+                    { label: 'Requests per month', free: `${MAX_FREE.toLocaleString()} max`, pro: 'Unlimited' },
+                    { label: 'Virtual keys', free: '3 keys', pro: 'Unlimited' },
+                    { label: 'Per-customer tracking', free: '—', pro: '✓' },
+                    { label: 'Alert rules', free: '1 alert', pro: 'Unlimited' },
+                  ].map((row) => (
+                    <div
+                      key={row.label}
+                      style={{
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        padding: '6px 0',
+                        borderBottom: '1px solid var(--border)',
+                      }}
+                    >
+                      <span style={{ color: 'var(--t2)' }}>{row.label}</span>
+                      <div style={{ display: 'flex', gap: 32 }}>
+                        <span style={{ color: 'var(--t3)' }}>{row.free}</span>
+                        <span style={{ color: 'var(--pri)', fontWeight: 500 }}>{row.pro}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : (
+              <div
+                style={{
+                  padding: '14px 16px',
+                  borderRadius: 10,
+                  background: 'var(--pri-m)',
+                }}
+              >
+                <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--pri)', marginBottom: 4 }}>
+                  Pro Plan — Unlimited requests
+                </div>
+                <div style={{ fontSize: 12, color: 'var(--t2)' }}>
+                  You have unrestricted access to the gateway. No request limits.
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Toast */}
+      {toast && (
+        <div
+          style={{
+            position: 'fixed',
+            bottom: 24,
+            right: 24,
+            zIndex: 1000,
+            display: 'flex',
+            alignItems: 'center',
+            gap: 12,
+            padding: '12px 16px',
+            borderRadius: 10,
+            background: toastType === 'success' ? '#1C1B22' : 'var(--err)',
+            color: '#fff',
+            fontSize: 13,
+            fontWeight: 500,
+            boxShadow: '0 4px 24px rgba(0,0,0,.2)',
+            maxWidth: 360,
+          }}
+        >
+          {toast}
+          <button
+            onClick={() => setToast(null)}
+            style={{
+              background: 'none',
+              border: 'none',
+              cursor: 'pointer',
+              padding: 2,
+              color: 'rgba(255,255,255,0.6)',
+              display: 'flex',
+              marginLeft: 4,
+            }}
+          >
+            <IconX size={14} />
+          </button>
+        </div>
+      )}
     </div>
   )
 }

@@ -1,23 +1,120 @@
 'use client'
 import { useState } from 'react'
 import { trpc } from '../../../../trpc/client.ts'
+import { IconKey, IconX, IconCopy, IconCheck, IconPlus } from '@tabler/icons-react'
 
 type Provider = 'openai' | 'anthropic' | 'gemini'
 
-const PROVIDER_BADGE: Record<string, string> = {
-  openai: 'bg-blue-100 text-blue-800',
-  anthropic: 'bg-orange-100 text-orange-800',
-  gemini: 'bg-green-100 text-green-800',
-}
-
-function formatBudget(cap: string | null): string {
+function fmtBudget(cap: string | null): string {
   if (!cap) return 'No limit'
-  return `$${Number(cap).toFixed(2)} / mo`
+  return `$${Number(cap).toFixed(2)}/mo`
 }
 
-function formatDate(d: Date | string | null): string {
+function fmtDate(d: Date | string | null): string {
   if (!d) return '—'
   return new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+}
+
+// ─── shared styles ───────────────────────────────────────────
+const labelStyle: React.CSSProperties = {
+  fontSize: 12,
+  fontWeight: 500,
+  color: 'var(--t2)',
+  display: 'block',
+  marginBottom: 6,
+}
+
+const inputStyle: React.CSSProperties = {
+  width: '100%',
+  padding: '9px 12px',
+  border: '1px solid var(--border)',
+  borderRadius: 8,
+  fontSize: 13,
+  background: 'var(--bg)',
+  color: 'var(--t1)',
+  outline: 'none',
+}
+
+const selectStyle: React.CSSProperties = {
+  ...inputStyle,
+  background: 'var(--surface)',
+  cursor: 'pointer',
+}
+
+function SlideOverlay({
+  open,
+  onClose,
+  children,
+}: {
+  open: boolean
+  onClose: () => void
+  children: React.ReactNode
+}) {
+  if (!open) return null
+  return (
+    <div
+      style={{
+        position: 'fixed',
+        inset: 0,
+        background: 'rgba(28,27,34,0.35)',
+        zIndex: 400,
+        display: 'flex',
+        justifyContent: 'flex-end',
+      }}
+      onClick={onClose}
+    >
+      <div
+        style={{
+          width: 480,
+          height: '100%',
+          background: 'var(--surface)',
+          borderLeft: '1px solid var(--border)',
+          display: 'flex',
+          flexDirection: 'column',
+          boxShadow: '-8px 0 32px rgba(0,0,0,.12)',
+          overflowY: 'auto',
+        }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        {children}
+      </div>
+    </div>
+  )
+}
+
+function SlideHeader({ title, onClose }: { title: string; onClose: () => void }) {
+  return (
+    <div
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        padding: '18px 20px',
+        borderBottom: '1px solid var(--border)',
+        flexShrink: 0,
+        background: 'var(--surface)',
+      }}
+    >
+      <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--t1)' }}>{title}</div>
+      <button
+        onClick={onClose}
+        style={{
+          width: 28,
+          height: 28,
+          borderRadius: 6,
+          border: '1px solid var(--border)',
+          background: 'var(--surface)',
+          cursor: 'pointer',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          color: 'var(--t2)',
+        }}
+      >
+        <IconX size={16} />
+      </button>
+    </div>
+  )
 }
 
 export default function KeysPage() {
@@ -40,14 +137,12 @@ export default function KeysPage() {
     },
   })
 
-  // Modal state
   const [showCreate, setShowCreate] = useState(false)
   const [showReveal, setShowReveal] = useState(false)
   const [revealId, setRevealId] = useState<string | null>(null)
   const [deleteId, setDeleteId] = useState<string | null>(null)
   const [copied, setCopied] = useState(false)
 
-  // Form state
   const [name, setName] = useState('')
   const [provider, setProvider] = useState<Provider>('openai')
   const [realApiKey, setRealApiKey] = useState('')
@@ -90,218 +185,563 @@ export default function KeysPage() {
   }
 
   return (
-    <div>
-      {/* Page header */}
-      <div className="flex items-center justify-between mb-6">
+    <div style={{ padding: 24 }}>
+      {/* Header */}
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'flex-start',
+          justifyContent: 'space-between',
+          marginBottom: 20,
+        }}
+      >
         <div>
-          <h1 className="text-xl font-semibold text-gray-900">API Keys</h1>
-          <p className="text-sm text-gray-500 mt-0.5">
-            Virtual keys for your developers. Real provider keys are never exposed.
-          </p>
+          <div style={{ fontSize: 17, fontWeight: 600, letterSpacing: '-0.01em' }}>Virtual Keys</div>
+          <div style={{ fontSize: 12, color: 'var(--t3)', marginTop: 2 }}>
+            Issue virtual keys to your developers — real provider keys are never exposed
+          </div>
         </div>
         <button
           onClick={() => setShowCreate(true)}
-          className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 transition-colors"
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 6,
+            padding: '8px 18px',
+            borderRadius: 8,
+            background: 'var(--pri)',
+            color: '#fff',
+            fontSize: 12,
+            fontWeight: 500,
+            border: 'none',
+            cursor: 'pointer',
+          }}
         >
+          <IconPlus size={14} />
           Create Key
         </button>
       </div>
 
-      {/* Keys table */}
+      {/* Table */}
       {isLoading ? (
-        <div className="text-sm text-gray-500">Loading…</div>
+        <div
+          style={{
+            background: 'var(--surface)',
+            border: '1px solid var(--border)',
+            borderRadius: 14,
+            padding: 32,
+          }}
+        >
+          {[1, 2, 3].map((i) => (
+            <div
+              key={i}
+              style={{
+                height: 36,
+                background: '#F5F5F5',
+                borderRadius: 6,
+                marginBottom: 10,
+                animation: 'pulse 1.5s infinite',
+              }}
+            />
+          ))}
+        </div>
       ) : keys.length === 0 ? (
-        <div className="rounded-xl border border-gray-200 bg-white py-16 text-center">
-          <p className="text-gray-500 text-sm mb-4">No API keys yet.</p>
+        /* Empty state */
+        <div
+          style={{
+            background: 'var(--surface)',
+            border: '1px solid var(--border)',
+            borderRadius: 14,
+            padding: '48px 20px',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            textAlign: 'center',
+          }}
+        >
+          <div
+            style={{
+              width: 48,
+              height: 48,
+              borderRadius: 14,
+              background: 'var(--pri-m)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              marginBottom: 14,
+            }}
+          >
+            <IconKey size={22} color="var(--pri)" />
+          </div>
+          <div style={{ fontWeight: 600, marginBottom: 6 }}>No Virtual Keys</div>
+          <div
+            style={{
+              fontSize: 12,
+              color: 'var(--t3)',
+              maxWidth: 220,
+              lineHeight: 1.6,
+              marginBottom: 16,
+            }}
+          >
+            Create your first virtual key to start routing AI requests through TokenLens.
+          </div>
           <button
             onClick={() => setShowCreate(true)}
-            className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 transition-colors"
+            style={{
+              padding: '8px 18px',
+              borderRadius: 8,
+              background: 'var(--pri)',
+              color: '#fff',
+              fontSize: 12,
+              fontWeight: 500,
+              border: 'none',
+              cursor: 'pointer',
+            }}
           >
-            Create Key
+            + Create Key
           </button>
         </div>
       ) : (
-        <div className="rounded-xl border border-gray-200 bg-white overflow-hidden">
-          <table className="w-full text-sm">
+        <div
+          style={{
+            background: 'var(--surface)',
+            border: '1px solid var(--border)',
+            borderRadius: 14,
+            overflow: 'hidden',
+          }}
+        >
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              padding: '14px 18px',
+              borderBottom: '1px solid var(--border)',
+            }}
+          >
+            <div style={{ fontSize: 13, fontWeight: 500 }}>Virtual Keys</div>
+            <span style={{ fontSize: 12, color: 'var(--t3)' }}>{keys.length} keys</span>
+          </div>
+          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
-              <tr className="border-b border-gray-200 bg-gray-50">
-                <th className="text-left px-4 py-3 font-medium text-gray-500">Name</th>
-                <th className="text-left px-4 py-3 font-medium text-gray-500">Provider</th>
-                <th className="text-left px-4 py-3 font-medium text-gray-500">Budget Cap</th>
-                <th className="text-left px-4 py-3 font-medium text-gray-500">Created</th>
-                <th className="px-4 py-3" />
+              <tr>
+                {['Name / Key', 'Provider', 'Budget', 'Created', 'Status', ''].map((h) => (
+                  <th
+                    key={h}
+                    style={{
+                      padding: '9px 16px',
+                      textAlign: 'left',
+                      fontSize: 10,
+                      fontWeight: 500,
+                      color: 'var(--t3)',
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.05em',
+                      background: 'var(--bg)',
+                      borderBottom: '1px solid var(--border)',
+                    }}
+                  >
+                    {h}
+                  </th>
+                ))}
               </tr>
             </thead>
             <tbody>
-              {keys.map((key) => (
-                <tr key={key.id} className="border-b border-gray-100 last:border-0 hover:bg-gray-50">
-                  <td className="px-4 py-3 font-medium text-gray-900">{key.name}</td>
-                  <td className="px-4 py-3">
-                    <span
-                      className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${PROVIDER_BADGE[key.provider] ?? 'bg-gray-100 text-gray-700'}`}
+              {keys.map((key) => {
+                const providerColors: Record<string, { bg: string; color: string }> = {
+                  openai: { bg: '#E0F2FE', color: '#0369A1' },
+                  anthropic: { bg: '#FFF7ED', color: '#C2410C' },
+                  gemini: { bg: '#F0FDF4', color: '#16A34A' },
+                }
+                const pc = providerColors[key.provider] ?? { bg: '#F5F5F5', color: 'var(--t2)' }
+                return (
+                  <tr
+                    key={key.id}
+                    style={{ borderBottom: '1px solid var(--border)' }}
+                    onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--bg)' }}
+                    onMouseLeave={(e) => { e.currentTarget.style.background = '' }}
+                  >
+                    <td style={{ padding: '11px 16px' }}>
+                      <div style={{ fontWeight: 500, fontSize: 12 }}>{key.name}</div>
+                      <div
+                        style={{
+                          fontFamily: 'monospace',
+                          fontSize: 10,
+                          color: 'var(--t3)',
+                          marginTop: 2,
+                        }}
+                      >
+                        {key.id.slice(0, 8)}···{key.id.slice(-4)}
+                      </div>
+                    </td>
+                    <td style={{ padding: '11px 16px' }}>
+                      <span
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          padding: '2px 8px',
+                          borderRadius: 9999,
+                          fontSize: 10,
+                          fontWeight: 500,
+                          background: pc.bg,
+                          color: pc.color,
+                        }}
+                      >
+                        {key.provider}
+                      </span>
+                    </td>
+                    <td
+                      style={{
+                        padding: '11px 16px',
+                        fontSize: 12,
+                        fontFamily: 'monospace',
+                        color: key.budget_cap ? 'var(--t1)' : 'var(--t3)',
+                      }}
                     >
-                      {key.provider}
-                    </span>
-                  </td>
-                  <td className={`px-4 py-3 ${key.budget_cap ? 'text-gray-600' : 'text-gray-400'}`}>
-                    {formatBudget(key.budget_cap)}
-                  </td>
-                  <td className="px-4 py-3 text-gray-500">{formatDate(key.created_at)}</td>
-                  <td className="px-4 py-3 text-right">
-                    <button
-                      onClick={() => setDeleteId(key.id)}
-                      className="text-sm text-red-600 hover:text-red-700 font-medium"
+                      {fmtBudget(key.budget_cap)}
+                    </td>
+                    <td
+                      style={{
+                        padding: '11px 16px',
+                        fontSize: 11,
+                        color: 'var(--t3)',
+                        fontFamily: 'monospace',
+                      }}
                     >
-                      Delete
-                    </button>
-                  </td>
-                </tr>
-              ))}
+                      {fmtDate(key.created_at)}
+                    </td>
+                    <td style={{ padding: '11px 16px' }}>
+                      <span
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          padding: '2px 8px',
+                          borderRadius: 9999,
+                          fontSize: 10,
+                          fontWeight: 500,
+                          background: '#DCFCE7',
+                          color: '#16A34A',
+                        }}
+                      >
+                        Active
+                      </span>
+                    </td>
+                    <td style={{ padding: '11px 16px', textAlign: 'right' }}>
+                      <button
+                        onClick={() => setDeleteId(key.id)}
+                        style={{
+                          padding: '4px 10px',
+                          borderRadius: 8,
+                          border: '1px solid #FCA5A5',
+                          background: '#FEF2F2',
+                          fontSize: 11,
+                          color: 'var(--err)',
+                          cursor: 'pointer',
+                        }}
+                      >
+                        Delete
+                      </button>
+                    </td>
+                  </tr>
+                )
+              })}
             </tbody>
           </table>
         </div>
       )}
 
-      {/* Create modal */}
-      {showCreate && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="w-full max-w-md rounded-xl bg-white shadow-xl">
-            <div className="border-b border-gray-200 px-6 py-4">
-              <h2 className="text-lg font-semibold text-gray-900">Create API Key</h2>
-            </div>
-            <form onSubmit={handleCreate} className="space-y-4 p-6">
-              {createMutation.error && (
-                <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-                  {createMutation.error.message}
-                </div>
-              )}
-              <div>
-                <label className="mb-1 block text-sm font-medium text-gray-700">Name</label>
-                <input
-                  required
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  placeholder="e.g. Production OpenAI Key"
-                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                />
-              </div>
-              <div>
-                <label className="mb-1 block text-sm font-medium text-gray-700">Provider</label>
-                <select
-                  value={provider}
-                  onChange={(e) => setProvider(e.target.value as Provider)}
-                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                >
-                  <option value="openai">OpenAI</option>
-                  <option value="anthropic">Anthropic</option>
-                  <option value="gemini">Gemini</option>
-                </select>
-              </div>
-              <div>
-                <label className="mb-1 block text-sm font-medium text-gray-700">API Key</label>
-                <input
-                  required
-                  type="password"
-                  value={realApiKey}
-                  onChange={(e) => setRealApiKey(e.target.value)}
-                  placeholder="Paste your provider API key"
-                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                />
-              </div>
-              <div>
-                <label className="mb-1 block text-sm font-medium text-gray-700">
-                  Budget Cap{' '}
-                  <span className="font-normal text-gray-400">(optional)</span>
-                </label>
-                <input
-                  type="number"
-                  min="0.01"
-                  step="0.01"
-                  value={budgetCap}
-                  onChange={(e) => setBudgetCap(e.target.value)}
-                  placeholder="50.00"
-                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                />
-                <p className="mt-1 text-xs text-gray-500">
-                  Monthly spend limit in USD. Leave blank for no limit.
-                </p>
-              </div>
-              <div className="flex gap-3 pt-2">
-                <button
-                  type="button"
-                  onClick={cancelCreate}
-                  className="flex-1 rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={createMutation.isPending}
-                  className="flex-1 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-50 transition-colors"
-                >
-                  {createMutation.isPending ? 'Creating…' : 'Create'}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* Reveal modal */}
-      {showReveal && revealId && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="w-full max-w-md space-y-4 rounded-xl bg-white p-6 shadow-xl">
-            <div className="rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700">
-              Your virtual key has been created.
-            </div>
-            <div>
-              <p className="mb-2 text-sm font-medium text-gray-700">Your virtual key ID</p>
-              <div className="flex items-center gap-2">
-                <code className="flex-1 break-all rounded-lg bg-gray-100 px-3 py-2 font-mono text-sm text-gray-900">
-                  {revealId}
-                </code>
-                <button
-                  onClick={handleCopy}
-                  className="shrink-0 rounded-lg border border-gray-300 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
-                >
-                  {copied ? 'Copied!' : 'Copy'}
-                </button>
-              </div>
-            </div>
-            <p className="text-sm font-semibold text-amber-700">
-              Save this key. It will not be shown again.
-            </p>
-            <button
-              onClick={closeReveal}
-              className="w-full rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 transition-colors"
+      {/* Create Key slide-over */}
+      <SlideOverlay open={showCreate} onClose={cancelCreate}>
+        <SlideHeader title="Create Virtual Key" onClose={cancelCreate} />
+        <form onSubmit={handleCreate} style={{ display: 'flex', flexDirection: 'column', gap: 16, padding: 20 }}>
+          {createMutation.error && (
+            <div
+              style={{
+                padding: '10px 14px',
+                borderRadius: 8,
+                background: '#FEF2F2',
+                border: '1px solid #FCA5A5',
+                fontSize: 12,
+                color: 'var(--err)',
+              }}
             >
-              Done
+              {createMutation.error.message}
+            </div>
+          )}
+          <div>
+            <label style={labelStyle}>Key Name</label>
+            <input
+              required
+              style={inputStyle}
+              placeholder="e.g. prod-chat"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+            />
+          </div>
+          <div>
+            <label style={labelStyle}>Provider</label>
+            <select
+              style={selectStyle}
+              value={provider}
+              onChange={(e) => setProvider(e.target.value as Provider)}
+            >
+              <option value="openai">OpenAI</option>
+              <option value="anthropic">Anthropic</option>
+              <option value="gemini">Google Gemini</option>
+            </select>
+          </div>
+          <div>
+            <label style={labelStyle}>Provider API Key</label>
+            <input
+              required
+              type="password"
+              style={inputStyle}
+              placeholder="Paste your provider API key"
+              value={realApiKey}
+              onChange={(e) => setRealApiKey(e.target.value)}
+            />
+          </div>
+          <div>
+            <label style={labelStyle}>
+              Monthly Budget{' '}
+              <span style={{ fontWeight: 400, color: 'var(--t3)' }}>(optional)</span>
+            </label>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <span
+                style={{
+                  padding: '9px 12px',
+                  borderRadius: 8,
+                  border: '1px solid var(--border)',
+                  fontSize: 13,
+                  background: '#F5F5F5',
+                  color: 'var(--t3)',
+                }}
+              >
+                $
+              </span>
+              <input
+                type="number"
+                min="0.01"
+                step="0.01"
+                style={{ ...inputStyle, flex: 1 }}
+                placeholder="500"
+                value={budgetCap}
+                onChange={(e) => setBudgetCap(e.target.value)}
+              />
+            </div>
+            <div style={{ fontSize: 11, color: 'var(--t3)', marginTop: 5 }}>
+              Monthly spend limit in USD. Leave blank for no limit.
+            </div>
+          </div>
+          {/* Key preview */}
+          <div
+            style={{
+              background: 'var(--pri-m)',
+              borderRadius: 10,
+              padding: '12px 14px',
+            }}
+          >
+            <div style={{ fontSize: 11, fontWeight: 500, color: 'var(--pri)', marginBottom: 4 }}>
+              Key Preview
+            </div>
+            <div style={{ fontFamily: 'monospace', fontSize: 12, color: 'var(--pri)' }}>
+              tl-vk-{'{nanoid}'}
+            </div>
+          </div>
+          <div style={{ display: 'flex', gap: 10, paddingTop: 8 }}>
+            <button
+              type="button"
+              onClick={cancelCreate}
+              style={{
+                flex: 1,
+                padding: '9px 14px',
+                borderRadius: 8,
+                border: '1px solid var(--border)',
+                background: 'var(--surface)',
+                fontSize: 12,
+                color: 'var(--t2)',
+                cursor: 'pointer',
+              }}
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={createMutation.isPending}
+              style={{
+                flex: 2,
+                padding: '9px 14px',
+                borderRadius: 8,
+                background: 'var(--pri)',
+                color: '#fff',
+                fontSize: 12,
+                fontWeight: 500,
+                border: 'none',
+                cursor: createMutation.isPending ? 'not-allowed' : 'pointer',
+                opacity: createMutation.isPending ? 0.6 : 1,
+              }}
+            >
+              {createMutation.isPending ? 'Creating…' : 'Create Key'}
             </button>
           </div>
-        </div>
-      )}
+        </form>
+      </SlideOverlay>
 
-      {/* Delete confirm modal */}
+      {/* Reveal slide-over */}
+      <SlideOverlay open={showReveal && !!revealId} onClose={closeReveal}>
+        <SlideHeader title="Key Created" onClose={closeReveal} />
+        <div style={{ padding: 20, display: 'flex', flexDirection: 'column', gap: 16 }}>
+          <div
+            style={{
+              padding: '10px 14px',
+              borderRadius: 8,
+              background: '#DCFCE7',
+              border: '1px solid #86EFAC',
+              fontSize: 12,
+              color: '#16A34A',
+            }}
+          >
+            Your virtual key has been created successfully.
+          </div>
+          <div
+            style={{
+              background: 'var(--pri-m)',
+              borderRadius: 10,
+              padding: '14px 16px',
+            }}
+          >
+            <div style={{ fontSize: 11, color: 'var(--pri)', marginBottom: 4, fontWeight: 500 }}>
+              Virtual Key
+            </div>
+            <div
+              style={{
+                fontFamily: 'monospace',
+                fontSize: 13,
+                color: 'var(--pri)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                gap: 8,
+                wordBreak: 'break-all',
+              }}
+            >
+              <span style={{ flex: 1 }}>{revealId}</span>
+              <button
+                onClick={handleCopy}
+                style={{
+                  flexShrink: 0,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 4,
+                  padding: '4px 10px',
+                  borderRadius: 6,
+                  background: copied ? '#16A34A' : 'var(--pri)',
+                  color: '#fff',
+                  border: 'none',
+                  cursor: 'pointer',
+                  fontSize: 11,
+                  fontWeight: 500,
+                }}
+              >
+                {copied ? <IconCheck size={12} /> : <IconCopy size={12} />}
+                {copied ? 'Copied!' : 'Copy'}
+              </button>
+            </div>
+          </div>
+          <div
+            style={{
+              fontSize: 12,
+              fontWeight: 600,
+              color: 'var(--warn)',
+              background: '#FEF3C7',
+              border: '1px solid #FDE68A',
+              padding: '10px 14px',
+              borderRadius: 8,
+            }}
+          >
+            Save this key — it will not be shown again.
+          </div>
+          <button
+            onClick={closeReveal}
+            style={{
+              padding: '9px 14px',
+              borderRadius: 8,
+              background: 'var(--pri)',
+              color: '#fff',
+              fontSize: 12,
+              fontWeight: 500,
+              border: 'none',
+              cursor: 'pointer',
+              width: '100%',
+            }}
+          >
+            Done
+          </button>
+        </div>
+      </SlideOverlay>
+
+      {/* Delete confirm — small modal */}
       {deleteId && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="w-full max-w-sm space-y-4 rounded-xl bg-white p-6 shadow-xl">
-            <h2 className="text-lg font-semibold text-gray-900">Delete key?</h2>
-            <p className="text-sm text-gray-500">
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(28,27,34,0.35)',
+            zIndex: 500,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: 16,
+          }}
+          onClick={() => setDeleteId(null)}
+        >
+          <div
+            style={{
+              background: 'var(--surface)',
+              borderRadius: 14,
+              padding: 24,
+              width: '100%',
+              maxWidth: 380,
+              boxShadow: '0 8px 32px rgba(0,0,0,.12)',
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div style={{ fontSize: 15, fontWeight: 600, marginBottom: 8 }}>Delete key?</div>
+            <div style={{ fontSize: 13, color: 'var(--t2)', lineHeight: 1.6, marginBottom: 20 }}>
               This will permanently deactivate this key. Requests using it will fail immediately.
-            </p>
-            <div className="flex gap-3">
+            </div>
+            <div style={{ display: 'flex', gap: 10 }}>
               <button
                 onClick={() => setDeleteId(null)}
-                className="flex-1 rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+                style={{
+                  flex: 1,
+                  padding: '9px 14px',
+                  borderRadius: 8,
+                  border: '1px solid var(--border)',
+                  background: 'var(--surface)',
+                  fontSize: 12,
+                  color: 'var(--t2)',
+                  cursor: 'pointer',
+                }}
               >
                 Cancel
               </button>
               <button
                 onClick={() => deleteMutation.mutate({ id: deleteId })}
                 disabled={deleteMutation.isPending}
-                className="flex-1 rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-50 transition-colors"
+                style={{
+                  flex: 2,
+                  padding: '9px 14px',
+                  borderRadius: 8,
+                  background: 'var(--err)',
+                  color: '#fff',
+                  fontSize: 12,
+                  fontWeight: 500,
+                  border: 'none',
+                  cursor: deleteMutation.isPending ? 'not-allowed' : 'pointer',
+                  opacity: deleteMutation.isPending ? 0.6 : 1,
+                }}
               >
-                {deleteMutation.isPending ? 'Deleting…' : 'Delete'}
+                {deleteMutation.isPending ? 'Deleting…' : 'Delete Key'}
               </button>
             </div>
           </div>

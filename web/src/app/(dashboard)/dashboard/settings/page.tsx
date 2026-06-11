@@ -1,6 +1,7 @@
 'use client'
 import { useState, useEffect } from 'react'
 import { trpc } from '../../../../trpc/client.ts'
+import { IconX, IconPlus, IconUsersGroup } from '@tabler/icons-react'
 
 function formatRelativeTime(date: Date | string): string {
   const ms = new Date(date).getTime() - Date.now()
@@ -10,38 +11,49 @@ function formatRelativeTime(date: Date | string): string {
   return `in ${hours} hours`
 }
 
-function Section({ title, children }: { title: string; children: React.ReactNode }) {
-  return (
-    <div className="rounded-xl border border-gray-200 bg-white p-6">
-      <h2 className="text-base font-semibold text-gray-900 mb-4">{title}</h2>
-      {children}
-    </div>
-  )
+function initials(name: string | null | undefined, email: string): string {
+  if (name) return name.split(' ').map((w) => w[0]).join('').toUpperCase().slice(0, 2)
+  return email.slice(0, 2).toUpperCase()
 }
 
-function RoleBadge({ role }: { role: string }) {
-  const colours: Record<string, string> = {
-    admin: 'bg-purple-100 text-purple-700',
-    member: 'bg-blue-100 text-blue-700',
-    viewer: 'bg-gray-100 text-gray-600',
-  }
-  return (
-    <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${colours[role] ?? colours.viewer}`}>
-      {role}
-    </span>
-  )
+const AVATAR_COLORS: { bg: string; color: string }[] = [
+  { bg: '#EDE9FF', color: '#5A4EC7' },
+  { bg: '#F0FDF4', color: '#16A34A' },
+  { bg: '#FFF7ED', color: '#D97706' },
+  { bg: '#EFF6FF', color: '#0369A1' },
+  { bg: '#FEF2F2', color: '#BA1A1A' },
+]
+
+function roleChip(role: string): { bg: string; color: string } {
+  if (role === 'admin') return { bg: '#EDE9FF', color: '#5A4EC7' }
+  if (role === 'member') return { bg: '#E0F2FE', color: '#0369A1' }
+  return { bg: '#F4F4F5', color: '#474553' }
 }
 
-function PlanBadge({ plan }: { plan: string }) {
-  const isPro = plan === 'pro'
-  return (
-    <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${isPro ? 'bg-indigo-100 text-indigo-700' : 'bg-gray-100 text-gray-600'}`}>
-      {isPro ? 'Pro' : 'Free'}
-    </span>
-  )
+const labelStyle: React.CSSProperties = {
+  fontSize: 12,
+  fontWeight: 500,
+  color: 'var(--t2)',
+  display: 'block',
+  marginBottom: 6,
 }
+
+const inputStyle: React.CSSProperties = {
+  width: '100%',
+  padding: '9px 12px',
+  border: '1px solid var(--border)',
+  borderRadius: 8,
+  fontSize: 13,
+  background: 'var(--bg)',
+  color: 'var(--t1)',
+  outline: 'none',
+}
+
+type Tab = 'general' | 'team' | 'invites'
 
 export default function SettingsPage() {
+  const [tab, setTab] = useState<Tab>('general')
+
   const utils = trpc.useUtils()
   const { data: settings, isLoading: settingsLoading } = trpc.workspace.getSettings.useQuery()
   const { data: members, isLoading: membersLoading } = trpc.workspace.listMembers.useQuery()
@@ -60,52 +72,30 @@ export default function SettingsPage() {
   const [inviteSuccess, setInviteSuccess] = useState<string | null>(null)
   const [revokeTarget, setRevokeTarget] = useState<string | null>(null)
 
-  useEffect(() => {
-    if (settings) setName(settings.name)
-  }, [settings])
-
+  useEffect(() => { if (settings) setName(settings.name) }, [settings])
   useEffect(() => {
     if (settings) setBudgetCap(settings.budgetCap !== null ? String(settings.budgetCap) : '')
   }, [settings])
 
-  const currentMember = members?.find((m) => m.role === 'admin') // placeholder — actual current user check below
-
-  // Determine current user's role from the members list using session.
-  // We compare by email via getSettings owning admin — for display gating we use
-  // the fact that protectedAdminProcedure already enforces server-side; we expose
-  // isAdmin from userRole returned by trpc context.
-  // Simplest client-side check: if updateName mutation returns FORBIDDEN, show error.
-  // For UI gating, use the fact that if listMembers is accessible (member+), the
-  // current user is at least member. Admin inputs are optimistically shown and
-  // server enforces the real check.
-  // We still want to disable for non-admins: query getSettings succeeds for all roles,
-  // but listMembers requires member+. We'll use a separate userRole query approach —
-  // actually the simplest is: admin = someone whose role in members list is 'admin'
-  // AND they can call updateName. Since we don't have a "who am I" query, we check
-  // via mutation error.
-  // Better: add a small derived state from listMembers — we need session user id.
-  // For now, let's use the fact that updateName will FORBIDDEN if not admin.
-  // UI: show inputs for everyone, disable on FORBIDDEN response.
-
   const updateNameMutation = trpc.workspace.updateName.useMutation({
-    onSuccess: () => utils.workspace.getSettings.invalidate(),
+    onSuccess: () => void utils.workspace.getSettings.invalidate(),
     onError: (e) => setNameError(e.message),
   })
 
   const updateBudgetCapMutation = trpc.workspace.updateBudgetCap.useMutation({
-    onSuccess: () => utils.workspace.getSettings.invalidate(),
+    onSuccess: () => void utils.workspace.getSettings.invalidate(),
     onError: (e) => setCapError(e.message),
   })
 
   const updateRoleMutation = trpc.workspace.updateMemberRole.useMutation({
-    onSuccess: () => utils.workspace.listMembers.invalidate(),
+    onSuccess: () => void utils.workspace.listMembers.invalidate(),
   })
 
   const removeMemberMutation = trpc.workspace.removeMember.useMutation({
     onSuccess: () => {
       setRemoveTarget(null)
-      utils.workspace.listMembers.invalidate()
-      utils.workspace.getSettings.invalidate()
+      void utils.workspace.listMembers.invalidate()
+      void utils.workspace.getSettings.invalidate()
     },
   })
 
@@ -116,7 +106,7 @@ export default function SettingsPage() {
       setInviteRole('member')
       setInviteError(null)
       setInviteSuccess(`Invite sent to ${data.email}`)
-      utils.invite.listPendingInvites.invalidate()
+      void utils.invite.listPendingInvites.invalidate()
       setTimeout(() => setInviteSuccess(null), 5000)
     },
     onError: (e) => setInviteError(e.message),
@@ -125,167 +115,470 @@ export default function SettingsPage() {
   const revokeInviteMutation = trpc.invite.revokeInvite.useMutation({
     onSuccess: () => {
       setRevokeTarget(null)
-      utils.invite.listPendingInvites.invalidate()
+      void utils.invite.listPendingInvites.invalidate()
     },
   })
 
-  // Determine if current user is admin: check if any mutation returns FORBIDDEN.
-  // Simpler: derive from members — the session user would match a member row.
-  // Since we don't have session in client easily, we use listMembers error as signal.
-  // For disabling inputs: if listMembers failed with FORBIDDEN, user is viewer-only.
-  // Actually protectedMemberProcedure allows viewer+ for listMembers... wait no:
-  // listMembers uses protectedMemberProcedure (member+), viewers can't call it.
-  // So if membersLoading is done and members is undefined, user may be viewer.
-  // We'll track admin status by whether updateName/updateBudgetCap are accessible.
-  // For simplicity in MVP: show all inputs, disable submit buttons while mutations are
-  // pending, show errors inline. Server enforces actual RBAC.
-
-  if (settingsLoading) {
-    return (
-      <div className="space-y-6">
-        <div className="h-8 w-48 rounded bg-gray-100 animate-pulse" />
-        <div className="rounded-xl border border-gray-200 bg-white p-6 space-y-4">
-          <div className="h-4 w-32 rounded bg-gray-100 animate-pulse" />
-          <div className="h-10 w-full rounded bg-gray-100 animate-pulse" />
-          <div className="h-10 w-full rounded bg-gray-100 animate-pulse" />
-        </div>
-      </div>
-    )
-  }
-
-  if (!settings) return null
+  const TABS: { id: Tab; label: string }[] = [
+    { id: 'general', label: 'General' },
+    { id: 'team', label: `Team${members ? ` (${members.length})` : ''}` },
+    { id: 'invites', label: `Pending Invites${pendingInvites?.length ? ` (${pendingInvites.length})` : ''}` },
+  ]
 
   return (
-    <div className="space-y-6 max-w-3xl">
-      <h1 className="text-2xl font-semibold text-gray-900">Settings</h1>
-
-      <Section title="Workspace Settings">
-        <div className="space-y-5">
-          <div className="flex items-center gap-3">
-            <span className="text-sm text-gray-500">Plan</span>
-            <PlanBadge plan={settings.plan} />
-            <span className="text-xs text-gray-400">· {settings.memberCount} member{settings.memberCount !== 1 ? 's' : ''}</span>
-          </div>
-
-          <div className="space-y-1.5">
-            <label className="block text-sm font-medium text-gray-700">Workspace name</label>
-            <div className="flex gap-2">
-              <input
-                value={name}
-                onChange={(e) => { setName(e.target.value); setNameError(null) }}
-                className="flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                placeholder="Workspace name"
-                maxLength={100}
-              />
-              <button
-                onClick={() => {
-                  setNameError(null)
-                  updateNameMutation.mutate({ name })
-                }}
-                disabled={!name.trim() || updateNameMutation.isPending}
-                className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {updateNameMutation.isPending ? 'Saving…' : 'Save'}
-              </button>
-            </div>
-            {nameError && <p className="text-xs text-red-600">{nameError}</p>}
-            {updateNameMutation.isSuccess && <p className="text-xs text-green-600">Saved</p>}
-          </div>
-
-          <div className="space-y-1.5">
-            <label className="block text-sm font-medium text-gray-700">Monthly budget cap (USD)</label>
-            <div className="flex gap-2">
-              <input
-                type="number"
-                min="0"
-                step="0.01"
-                value={budgetCap}
-                onChange={(e) => { setBudgetCap(e.target.value); setCapError(null) }}
-                className="flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                placeholder="No limit"
-              />
-              <button
-                onClick={() => {
-                  setCapError(null)
-                  const parsed = budgetCap === '' ? null : parseFloat(budgetCap)
-                  if (parsed !== null && (isNaN(parsed) || parsed <= 0)) {
-                    setCapError('Enter a positive number or leave blank for no limit')
-                    return
-                  }
-                  updateBudgetCapMutation.mutate({ budgetCap: parsed })
-                }}
-                disabled={updateBudgetCapMutation.isPending}
-                className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {updateBudgetCapMutation.isPending ? 'Saving…' : 'Save'}
-              </button>
-            </div>
-            <p className="text-xs text-gray-400">Gateway returns 429 when workspace spend exceeds this</p>
-            {capError && <p className="text-xs text-red-600">{capError}</p>}
-            {updateBudgetCapMutation.isSuccess && <p className="text-xs text-green-600">Saved</p>}
+    <div style={{ padding: 24 }}>
+      {/* Header */}
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'flex-start',
+          justifyContent: 'space-between',
+          marginBottom: 20,
+        }}
+      >
+        <div>
+          <div style={{ fontSize: 17, fontWeight: 600, letterSpacing: '-0.01em' }}>Settings</div>
+          <div style={{ fontSize: 12, color: 'var(--t3)', marginTop: 2 }}>
+            Workspace config, team members, and invites
           </div>
         </div>
-      </Section>
+        <button
+          onClick={() => { setInviteDialogOpen(true); setInviteError(null) }}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 6,
+            padding: '8px 18px',
+            borderRadius: 8,
+            background: 'var(--pri)',
+            color: '#fff',
+            fontSize: 12,
+            fontWeight: 500,
+            border: 'none',
+            cursor: 'pointer',
+          }}
+        >
+          <IconPlus size={14} />
+          Invite Member
+        </button>
+      </div>
 
-      <Section title="Team Members">
-        {membersLoading ? (
-          <div className="space-y-3">
-            {[0, 1].map((i) => (
-              <div key={i} className="h-10 rounded bg-gray-100 animate-pulse" />
-            ))}
+      {/* Tab bar */}
+      <div
+        style={{
+          display: 'flex',
+          gap: 4,
+          background: 'var(--border)',
+          borderRadius: 10,
+          padding: 4,
+          width: 'fit-content',
+          marginBottom: 20,
+        }}
+      >
+        {TABS.map((t) => (
+          <button
+            key={t.id}
+            onClick={() => setTab(t.id)}
+            style={{
+              padding: '6px 14px',
+              borderRadius: 7,
+              fontSize: 12,
+              fontWeight: 500,
+              cursor: 'pointer',
+              border: 'none',
+              background: tab === t.id ? 'var(--surface)' : 'transparent',
+              color: tab === t.id ? 'var(--t1)' : 'var(--t3)',
+              boxShadow: tab === t.id ? '0 1px 4px rgba(0,0,0,.08)' : 'none',
+              transition: '0.1s',
+            }}
+          >
+            {t.label}
+          </button>
+        ))}
+      </div>
+
+      {/* ── General tab ── */}
+      {tab === 'general' && (
+        <div
+          style={{
+            background: 'var(--surface)',
+            border: '1px solid var(--border)',
+            borderRadius: 14,
+            padding: 18,
+            maxWidth: 600,
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 18,
+          }}
+        >
+          {settingsLoading ? (
+            <>
+              {[1, 2, 3].map((i) => (
+                <div key={i} style={{ height: 40, background: '#F5F5F5', borderRadius: 8 }} />
+              ))}
+            </>
+          ) : settings ? (
+            <>
+              {/* Plan */}
+              <div>
+                <label style={labelStyle}>Plan</label>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <span
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      padding: '3px 12px',
+                      borderRadius: 9999,
+                      fontSize: 12,
+                      fontWeight: 600,
+                      background: settings.plan === 'pro' ? 'var(--pri-m)' : '#F4F4F5',
+                      color: settings.plan === 'pro' ? 'var(--pri)' : '#474553',
+                      textTransform: 'capitalize',
+                    }}
+                  >
+                    {settings.plan ?? 'Free'}
+                  </span>
+                  <span style={{ fontSize: 12, color: 'var(--t3)' }}>
+                    · {settings.memberCount} member{settings.memberCount !== 1 ? 's' : ''}
+                  </span>
+                </div>
+              </div>
+
+              {/* Workspace name */}
+              <div>
+                <label style={labelStyle}>Organization Name</label>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <input
+                    value={name}
+                    onChange={(e) => { setName(e.target.value); setNameError(null) }}
+                    style={{ ...inputStyle, flex: 1 }}
+                    placeholder="Workspace name"
+                    maxLength={100}
+                  />
+                  <button
+                    onClick={() => { setNameError(null); updateNameMutation.mutate({ name }) }}
+                    disabled={!name.trim() || updateNameMutation.isPending}
+                    style={{
+                      padding: '9px 18px',
+                      borderRadius: 8,
+                      background: 'var(--pri)',
+                      color: '#fff',
+                      fontSize: 12,
+                      fontWeight: 500,
+                      border: 'none',
+                      cursor: !name.trim() || updateNameMutation.isPending ? 'not-allowed' : 'pointer',
+                      opacity: !name.trim() || updateNameMutation.isPending ? 0.6 : 1,
+                      flexShrink: 0,
+                    }}
+                  >
+                    {updateNameMutation.isPending ? 'Saving…' : 'Save'}
+                  </button>
+                </div>
+                {nameError && (
+                  <div style={{ fontSize: 11, color: 'var(--err)', marginTop: 4 }}>{nameError}</div>
+                )}
+                {updateNameMutation.isSuccess && (
+                  <div style={{ fontSize: 11, color: 'var(--ok)', marginTop: 4 }}>Saved ✓</div>
+                )}
+              </div>
+
+              {/* Budget cap */}
+              <div>
+                <label style={labelStyle}>Monthly Budget Cap (USD)</label>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <span
+                    style={{
+                      padding: '9px 12px',
+                      borderRadius: 8,
+                      border: '1px solid var(--border)',
+                      fontSize: 13,
+                      background: '#F5F5F5',
+                      color: 'var(--t3)',
+                      flexShrink: 0,
+                    }}
+                  >
+                    $
+                  </span>
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={budgetCap}
+                    onChange={(e) => { setBudgetCap(e.target.value); setCapError(null) }}
+                    style={{ ...inputStyle, flex: 1 }}
+                    placeholder="No limit"
+                  />
+                  <button
+                    onClick={() => {
+                      setCapError(null)
+                      const parsed = budgetCap === '' ? null : parseFloat(budgetCap)
+                      if (parsed !== null && (isNaN(parsed) || parsed <= 0)) {
+                        setCapError('Enter a positive number or leave blank for no limit')
+                        return
+                      }
+                      updateBudgetCapMutation.mutate({ budgetCap: parsed })
+                    }}
+                    disabled={updateBudgetCapMutation.isPending}
+                    style={{
+                      padding: '9px 18px',
+                      borderRadius: 8,
+                      background: 'var(--pri)',
+                      color: '#fff',
+                      fontSize: 12,
+                      fontWeight: 500,
+                      border: 'none',
+                      cursor: updateBudgetCapMutation.isPending ? 'not-allowed' : 'pointer',
+                      opacity: updateBudgetCapMutation.isPending ? 0.6 : 1,
+                      flexShrink: 0,
+                    }}
+                  >
+                    {updateBudgetCapMutation.isPending ? 'Saving…' : 'Save'}
+                  </button>
+                </div>
+                <div style={{ fontSize: 11, color: 'var(--t3)', marginTop: 4 }}>
+                  Gateway returns 429 when workspace spend exceeds this cap
+                </div>
+                {capError && (
+                  <div style={{ fontSize: 11, color: 'var(--err)', marginTop: 4 }}>{capError}</div>
+                )}
+                {updateBudgetCapMutation.isSuccess && (
+                  <div style={{ fontSize: 11, color: 'var(--ok)', marginTop: 4 }}>Saved ✓</div>
+                )}
+              </div>
+            </>
+          ) : null}
+        </div>
+      )}
+
+      {/* ── Team tab ── */}
+      {tab === 'team' && (
+        <div
+          style={{
+            background: 'var(--surface)',
+            border: '1px solid var(--border)',
+            borderRadius: 14,
+            overflow: 'hidden',
+          }}
+        >
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              padding: '14px 18px',
+              borderBottom: '1px solid var(--border)',
+            }}
+          >
+            <div style={{ fontSize: 13, fontWeight: 500 }}>
+              Members ({members?.length ?? 0})
+            </div>
           </div>
-        ) : !members || members.length === 0 ? (
-          <p className="text-sm text-gray-500">No members found.</p>
-        ) : (
-          <div className="overflow-hidden rounded-lg border border-gray-200">
-            <table className="w-full text-sm">
-              <thead className="bg-gray-50">
+
+          {membersLoading ? (
+            <div style={{ padding: 16 }}>
+              {[1, 2, 3].map((i) => (
+                <div
+                  key={i}
+                  style={{ height: 44, background: '#F5F5F5', borderRadius: 4, marginBottom: 10 }}
+                />
+              ))}
+            </div>
+          ) : !members || members.length === 0 ? (
+            <div
+              style={{
+                padding: '48px 20px',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                textAlign: 'center',
+              }}
+            >
+              <div
+                style={{
+                  width: 48,
+                  height: 48,
+                  borderRadius: 14,
+                  background: 'var(--pri-m)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  marginBottom: 14,
+                }}
+              >
+                <IconUsersGroup size={22} color="var(--pri)" />
+              </div>
+              <div style={{ fontWeight: 600, marginBottom: 6 }}>Solo Operator</div>
+              <div style={{ fontSize: 12, color: 'var(--t3)', maxWidth: 220, lineHeight: 1.6, marginBottom: 16 }}>
+                Invite teammates to monitor usage and manage keys with the right roles.
+              </div>
+              <button
+                onClick={() => { setInviteDialogOpen(true); setInviteError(null) }}
+                style={{
+                  padding: '8px 18px',
+                  borderRadius: 8,
+                  background: 'var(--pri)',
+                  color: '#fff',
+                  fontSize: 12,
+                  fontWeight: 500,
+                  border: 'none',
+                  cursor: 'pointer',
+                }}
+              >
+                + Invite Member
+              </button>
+            </div>
+          ) : (
+            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+              <thead>
                 <tr>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wide">Name</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wide">Email</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wide">Role</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wide">Joined</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wide">Actions</th>
+                  {['Member', 'Role', 'Last Active', 'Status', ''].map((h) => (
+                    <th
+                      key={h}
+                      style={{
+                        padding: '9px 16px',
+                        textAlign: 'left',
+                        fontSize: 10,
+                        fontWeight: 500,
+                        color: 'var(--t3)',
+                        textTransform: 'uppercase',
+                        letterSpacing: '0.05em',
+                        background: 'var(--bg)',
+                        borderBottom: '1px solid var(--border)',
+                      }}
+                    >
+                      {h}
+                    </th>
+                  ))}
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-200 bg-white">
-                {members.map((member) => {
+              <tbody>
+                {members.map((member, i) => {
                   const isAdmin = member.role === 'admin'
+                  const av = AVATAR_COLORS[i % AVATAR_COLORS.length] ?? AVATAR_COLORS[0]!
+                  const chip = roleChip(member.role)
                   return (
-                    <tr key={member.userId}>
-                      <td className="px-4 py-3 text-gray-900">{member.name ?? '—'}</td>
-                      <td className="px-4 py-3 text-gray-600">{member.email}</td>
-                      <td className="px-4 py-3">
-                        <RoleBadge role={member.role} />
-                      </td>
-                      <td className="px-4 py-3 text-gray-500">
-                        {new Date(member.joinedAt).toLocaleDateString()}
-                      </td>
-                      <td className="px-4 py-3">
-                        {isAdmin ? (
-                          <span className="text-xs text-gray-400">—</span>
-                        ) : (
-                          <div className="flex items-center gap-2">
-                            <select
-                              value={member.role}
-                              onChange={(e) => {
-                                const newRole = e.target.value as 'member' | 'viewer'
-                                updateRoleMutation.mutate({ userId: member.userId, newRole })
-                              }}
-                              disabled={updateRoleMutation.isPending}
-                              className="rounded border border-gray-300 px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500 disabled:opacity-50"
-                            >
-                              <option value="member">member</option>
-                              <option value="viewer">viewer</option>
-                            </select>
-                            <button
-                              onClick={() => setRemoveTarget(member.userId)}
-                              className="text-xs text-red-600 hover:text-red-800 disabled:opacity-50"
-                              disabled={removeMemberMutation.isPending}
-                            >
-                              Remove
-                            </button>
+                    <tr
+                      key={member.userId}
+                      style={{ borderBottom: '1px solid var(--border)' }}
+                      onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--bg)' }}
+                      onMouseLeave={(e) => { e.currentTarget.style.background = '' }}
+                    >
+                      <td style={{ padding: '11px 16px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                          <div
+                            style={{
+                              width: 32,
+                              height: 32,
+                              borderRadius: '50%',
+                              background: av.bg,
+                              color: av.color,
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              fontSize: 12,
+                              fontWeight: 600,
+                              flexShrink: 0,
+                            }}
+                          >
+                            {initials(member.name, member.email)}
                           </div>
+                          <div>
+                            <div style={{ fontSize: 12, fontWeight: 500 }}>
+                              {member.name ?? member.email.split('@')[0]}
+                            </div>
+                            <div style={{ fontSize: 11, color: 'var(--t3)' }}>{member.email}</div>
+                          </div>
+                        </div>
+                      </td>
+                      <td style={{ padding: '11px 16px' }}>
+                        {isAdmin ? (
+                          <span
+                            style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              padding: '2px 8px',
+                              borderRadius: 9999,
+                              fontSize: 10,
+                              fontWeight: 500,
+                              background: chip.bg,
+                              color: chip.color,
+                            }}
+                          >
+                            {member.role}
+                          </span>
+                        ) : (
+                          <select
+                            value={member.role}
+                            onChange={(e) => {
+                              const newRole = e.target.value as 'member' | 'viewer'
+                              updateRoleMutation.mutate({ userId: member.userId, newRole })
+                            }}
+                            disabled={updateRoleMutation.isPending}
+                            style={{
+                              padding: '3px 8px',
+                              borderRadius: 8,
+                              border: '1px solid var(--border)',
+                              fontSize: 11,
+                              background: 'var(--surface)',
+                              color: 'var(--t2)',
+                              cursor: 'pointer',
+                              outline: 'none',
+                            }}
+                          >
+                            <option value="member">member</option>
+                            <option value="viewer">viewer</option>
+                          </select>
+                        )}
+                      </td>
+                      <td
+                        style={{
+                          padding: '11px 16px',
+                          fontSize: 11,
+                          color: 'var(--t3)',
+                          fontFamily: 'monospace',
+                        }}
+                      >
+                        {new Date(member.joinedAt).toLocaleDateString('en-US', {
+                          month: 'short',
+                          day: 'numeric',
+                          year: 'numeric',
+                        })}
+                      </td>
+                      <td style={{ padding: '11px 16px' }}>
+                        <span
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            padding: '2px 8px',
+                            borderRadius: 9999,
+                            fontSize: 10,
+                            fontWeight: 500,
+                            background: '#DCFCE7',
+                            color: '#16A34A',
+                          }}
+                        >
+                          Active
+                        </span>
+                      </td>
+                      <td style={{ padding: '11px 16px', textAlign: 'right' }}>
+                        {isAdmin ? (
+                          <span style={{ fontSize: 11, color: 'var(--t3)' }}>—</span>
+                        ) : (
+                          <button
+                            onClick={() => setRemoveTarget(member.userId)}
+                            disabled={removeMemberMutation.isPending}
+                            style={{
+                              padding: '4px 10px',
+                              borderRadius: 8,
+                              border: '1px solid #FCA5A5',
+                              background: '#FEF2F2',
+                              fontSize: 11,
+                              color: 'var(--err)',
+                              cursor: 'pointer',
+                            }}
+                          >
+                            Remove
+                          </button>
                         )}
                       </td>
                     </tr>
@@ -293,132 +586,361 @@ export default function SettingsPage() {
                 })}
               </tbody>
             </table>
-          </div>
-        )}
-      </Section>
-
-      <Section title="Invite Members">
-        <div className="space-y-4">
-          {inviteSuccess && (
-            <p className="text-sm text-green-600">{inviteSuccess}</p>
-          )}
-          <div className="flex justify-end">
-            <button
-              onClick={() => { setInviteDialogOpen(true); setInviteError(null) }}
-              className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700"
-            >
-              Invite Member
-            </button>
-          </div>
-
-          {pendingInvites && pendingInvites.length > 0 ? (
-            <div className="overflow-hidden rounded-lg border border-gray-200">
-              <table className="w-full text-sm">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wide">Email</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wide">Role</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wide">Expires</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wide">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-200 bg-white">
-                  {pendingInvites.map((invite) => (
-                    <tr key={invite.id}>
-                      <td className="px-4 py-3 text-gray-900">{invite.email}</td>
-                      <td className="px-4 py-3">
-                        <RoleBadge role={invite.role} />
-                      </td>
-                      <td className="px-4 py-3 text-gray-500 text-xs">
-                        {formatRelativeTime(invite.expires_at)}
-                      </td>
-                      <td className="px-4 py-3">
-                        <button
-                          onClick={() => setRevokeTarget(invite.id)}
-                          className="text-xs text-red-600 hover:text-red-800"
-                        >
-                          Revoke
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          ) : (
-            <p className="text-sm text-gray-400">No pending invites.</p>
           )}
         </div>
-      </Section>
+      )}
 
+      {/* ── Invites tab ── */}
+      {tab === 'invites' && (
+        <div>
+          {inviteSuccess && (
+            <div
+              style={{
+                padding: '11px 16px',
+                borderRadius: 10,
+                background: '#DCFCE7',
+                border: '1px solid #86EFAC',
+                fontSize: 12,
+                color: '#16A34A',
+                marginBottom: 16,
+              }}
+            >
+              {inviteSuccess}
+            </div>
+          )}
+
+          <div
+            style={{
+              background: 'var(--surface)',
+              border: '1px solid var(--border)',
+              borderRadius: 14,
+              overflow: 'hidden',
+            }}
+          >
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                padding: '14px 18px',
+                borderBottom: '1px solid var(--border)',
+              }}
+            >
+              <div style={{ fontSize: 13, fontWeight: 500 }}>
+                Pending Invites ({pendingInvites?.length ?? 0})
+              </div>
+              <button
+                onClick={() => { setInviteDialogOpen(true); setInviteError(null) }}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 6,
+                  padding: '7px 14px',
+                  borderRadius: 8,
+                  background: 'var(--pri)',
+                  color: '#fff',
+                  fontSize: 12,
+                  fontWeight: 500,
+                  border: 'none',
+                  cursor: 'pointer',
+                }}
+              >
+                <IconPlus size={13} />
+                Invite Member
+              </button>
+            </div>
+
+            {!pendingInvites || pendingInvites.length === 0 ? (
+              <div
+                style={{
+                  padding: '32px 20px',
+                  textAlign: 'center',
+                  fontSize: 12,
+                  color: 'var(--t3)',
+                }}
+              >
+                No pending invites.
+              </div>
+            ) : (
+              <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                <thead>
+                  <tr>
+                    {['Email', 'Role', 'Expires', ''].map((h) => (
+                      <th
+                        key={h}
+                        style={{
+                          padding: '9px 16px',
+                          textAlign: 'left',
+                          fontSize: 10,
+                          fontWeight: 500,
+                          color: 'var(--t3)',
+                          textTransform: 'uppercase',
+                          letterSpacing: '0.05em',
+                          background: 'var(--bg)',
+                          borderBottom: '1px solid var(--border)',
+                        }}
+                      >
+                        {h}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {pendingInvites.map((invite) => {
+                    const chip = roleChip(invite.role)
+                    return (
+                      <tr
+                        key={invite.id}
+                        style={{ borderBottom: '1px solid var(--border)' }}
+                        onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--bg)' }}
+                        onMouseLeave={(e) => { e.currentTarget.style.background = '' }}
+                      >
+                        <td style={{ padding: '11px 16px', fontSize: 12 }}>{invite.email}</td>
+                        <td style={{ padding: '11px 16px' }}>
+                          <span
+                            style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              padding: '2px 8px',
+                              borderRadius: 9999,
+                              fontSize: 10,
+                              fontWeight: 500,
+                              background: chip.bg,
+                              color: chip.color,
+                            }}
+                          >
+                            {invite.role}
+                          </span>
+                        </td>
+                        <td
+                          style={{
+                            padding: '11px 16px',
+                            fontSize: 11,
+                            color: 'var(--t3)',
+                          }}
+                        >
+                          {invite.expires_at ? formatRelativeTime(invite.expires_at) : '—'}
+                        </td>
+                        <td style={{ padding: '11px 16px', textAlign: 'right' }}>
+                          <button
+                            onClick={() => setRevokeTarget(invite.id)}
+                            style={{
+                              padding: '4px 10px',
+                              borderRadius: 8,
+                              border: '1px solid #FCA5A5',
+                              background: '#FEF2F2',
+                              fontSize: 11,
+                              color: 'var(--err)',
+                              cursor: 'pointer',
+                            }}
+                          >
+                            Revoke
+                          </button>
+                        </td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ── Invite slide-over ── */}
       {inviteDialogOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-          <div className="rounded-xl bg-white p-6 shadow-xl w-full max-w-sm space-y-4">
-            <h3 className="text-base font-semibold text-gray-900">Invite Member</h3>
-            <div className="space-y-3">
-              <div className="space-y-1.5">
-                <label className="block text-sm font-medium text-gray-700">Email address</label>
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(28,27,34,0.35)',
+            zIndex: 400,
+            display: 'flex',
+            justifyContent: 'flex-end',
+          }}
+          onClick={() => setInviteDialogOpen(false)}
+        >
+          <div
+            style={{
+              width: 480,
+              height: '100%',
+              background: 'var(--surface)',
+              borderLeft: '1px solid var(--border)',
+              display: 'flex',
+              flexDirection: 'column',
+              boxShadow: '-8px 0 32px rgba(0,0,0,.12)',
+              overflowY: 'auto',
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                padding: '18px 20px',
+                borderBottom: '1px solid var(--border)',
+                flexShrink: 0,
+              }}
+            >
+              <div style={{ fontSize: 15, fontWeight: 600 }}>Invite Team Member</div>
+              <button
+                onClick={() => setInviteDialogOpen(false)}
+                style={{
+                  width: 28,
+                  height: 28,
+                  borderRadius: 6,
+                  border: '1px solid var(--border)',
+                  background: 'var(--surface)',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: 'var(--t2)',
+                }}
+              >
+                <IconX size={16} />
+              </button>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 16, padding: 20 }}>
+              {inviteError && (
+                <div
+                  style={{
+                    padding: '10px 14px',
+                    borderRadius: 8,
+                    background: '#FEF2F2',
+                    border: '1px solid #FCA5A5',
+                    fontSize: 12,
+                    color: 'var(--err)',
+                  }}
+                >
+                  {inviteError}
+                </div>
+              )}
+              <div>
+                <label style={labelStyle}>Email Address</label>
                 <input
                   type="email"
+                  style={inputStyle}
+                  placeholder="colleague@company.com"
                   value={inviteEmail}
                   onChange={(e) => { setInviteEmail(e.target.value); setInviteError(null) }}
-                  placeholder="colleague@company.com"
-                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
                 />
               </div>
-              <div className="space-y-1.5">
-                <label className="block text-sm font-medium text-gray-700">Role</label>
+              <div>
+                <label style={labelStyle}>Role</label>
                 <select
+                  style={{ ...inputStyle, background: 'var(--surface)', cursor: 'pointer' }}
                   value={inviteRole}
                   onChange={(e) => setInviteRole(e.target.value as 'member' | 'viewer')}
-                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
                 >
                   <option value="member">Member</option>
                   <option value="viewer">Viewer</option>
                 </select>
               </div>
-              {inviteError && (
-                <p className="text-xs text-red-600">{inviteError}</p>
-              )}
-            </div>
-            <div className="flex gap-3 justify-end">
-              <button
-                onClick={() => { setInviteDialogOpen(false); setInviteError(null) }}
-                className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={() => {
-                  setInviteError(null)
-                  sendInviteMutation.mutate({ email: inviteEmail, role: inviteRole })
-                }}
-                disabled={!inviteEmail.trim() || sendInviteMutation.isPending}
-                className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {sendInviteMutation.isPending ? 'Sending…' : 'Send Invite'}
-              </button>
+              <div style={{ display: 'flex', gap: 10, paddingTop: 8 }}>
+                <button
+                  onClick={() => setInviteDialogOpen(false)}
+                  style={{
+                    flex: 1,
+                    padding: '9px 14px',
+                    borderRadius: 8,
+                    border: '1px solid var(--border)',
+                    background: 'var(--surface)',
+                    fontSize: 12,
+                    color: 'var(--t2)',
+                    cursor: 'pointer',
+                  }}
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={() => {
+                    setInviteError(null)
+                    sendInviteMutation.mutate({ email: inviteEmail, role: inviteRole })
+                  }}
+                  disabled={!inviteEmail.trim() || sendInviteMutation.isPending}
+                  style={{
+                    flex: 2,
+                    padding: '9px 14px',
+                    borderRadius: 8,
+                    background: 'var(--pri)',
+                    color: '#fff',
+                    fontSize: 12,
+                    fontWeight: 500,
+                    border: 'none',
+                    cursor: !inviteEmail.trim() || sendInviteMutation.isPending ? 'not-allowed' : 'pointer',
+                    opacity: !inviteEmail.trim() || sendInviteMutation.isPending ? 0.6 : 1,
+                  }}
+                >
+                  {sendInviteMutation.isPending ? 'Sending…' : 'Send Invite'}
+                </button>
+              </div>
             </div>
           </div>
         </div>
       )}
 
+      {/* Revoke confirm */}
       {revokeTarget && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-          <div className="rounded-xl bg-white p-6 shadow-xl w-full max-w-sm space-y-4">
-            <h3 className="text-base font-semibold text-gray-900">Revoke invite?</h3>
-            <p className="text-sm text-gray-600">The invite link will stop working immediately.</p>
-            <div className="flex gap-3 justify-end">
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(28,27,34,0.35)',
+            zIndex: 500,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+          onClick={() => setRevokeTarget(null)}
+        >
+          <div
+            style={{
+              background: 'var(--surface)',
+              borderRadius: 14,
+              padding: 24,
+              width: '100%',
+              maxWidth: 380,
+              boxShadow: '0 8px 32px rgba(0,0,0,.12)',
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div style={{ fontSize: 15, fontWeight: 600, marginBottom: 8 }}>Revoke invite?</div>
+            <div style={{ fontSize: 13, color: 'var(--t2)', lineHeight: 1.6, marginBottom: 20 }}>
+              The invite link will stop working immediately.
+            </div>
+            <div style={{ display: 'flex', gap: 10 }}>
               <button
                 onClick={() => setRevokeTarget(null)}
-                className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+                style={{
+                  flex: 1,
+                  padding: '9px 14px',
+                  borderRadius: 8,
+                  border: '1px solid var(--border)',
+                  background: 'var(--surface)',
+                  fontSize: 12,
+                  color: 'var(--t2)',
+                  cursor: 'pointer',
+                }}
               >
                 Cancel
               </button>
               <button
                 onClick={() => revokeInviteMutation.mutate({ id: revokeTarget })}
                 disabled={revokeInviteMutation.isPending}
-                className="rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-50"
+                style={{
+                  flex: 2,
+                  padding: '9px 14px',
+                  borderRadius: 8,
+                  background: 'var(--err)',
+                  color: '#fff',
+                  fontSize: 12,
+                  fontWeight: 500,
+                  border: 'none',
+                  cursor: revokeInviteMutation.isPending ? 'not-allowed' : 'pointer',
+                  opacity: revokeInviteMutation.isPending ? 0.6 : 1,
+                }}
               >
                 {revokeInviteMutation.isPending ? 'Revoking…' : 'Revoke'}
               </button>
@@ -427,24 +949,66 @@ export default function SettingsPage() {
         </div>
       )}
 
+      {/* Remove member confirm */}
       {removeTarget && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-          <div className="rounded-xl bg-white p-6 shadow-xl w-full max-w-sm space-y-4">
-            <h3 className="text-base font-semibold text-gray-900">Remove member?</h3>
-            <p className="text-sm text-gray-600">
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(28,27,34,0.35)',
+            zIndex: 500,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+          onClick={() => setRemoveTarget(null)}
+        >
+          <div
+            style={{
+              background: 'var(--surface)',
+              borderRadius: 14,
+              padding: 24,
+              width: '100%',
+              maxWidth: 380,
+              boxShadow: '0 8px 32px rgba(0,0,0,.12)',
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div style={{ fontSize: 15, fontWeight: 600, marginBottom: 8 }}>Remove member?</div>
+            <div style={{ fontSize: 13, color: 'var(--t2)', lineHeight: 1.6, marginBottom: 20 }}>
               This will revoke their access to the workspace immediately.
-            </p>
-            <div className="flex gap-3 justify-end">
+            </div>
+            <div style={{ display: 'flex', gap: 10 }}>
               <button
                 onClick={() => setRemoveTarget(null)}
-                className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+                style={{
+                  flex: 1,
+                  padding: '9px 14px',
+                  borderRadius: 8,
+                  border: '1px solid var(--border)',
+                  background: 'var(--surface)',
+                  fontSize: 12,
+                  color: 'var(--t2)',
+                  cursor: 'pointer',
+                }}
               >
                 Cancel
               </button>
               <button
                 onClick={() => removeMemberMutation.mutate({ userId: removeTarget })}
                 disabled={removeMemberMutation.isPending}
-                className="rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-50"
+                style={{
+                  flex: 2,
+                  padding: '9px 14px',
+                  borderRadius: 8,
+                  background: 'var(--err)',
+                  color: '#fff',
+                  fontSize: 12,
+                  fontWeight: 500,
+                  border: 'none',
+                  cursor: removeMemberMutation.isPending ? 'not-allowed' : 'pointer',
+                  opacity: removeMemberMutation.isPending ? 0.6 : 1,
+                }}
               >
                 {removeMemberMutation.isPending ? 'Removing…' : 'Remove'}
               </button>

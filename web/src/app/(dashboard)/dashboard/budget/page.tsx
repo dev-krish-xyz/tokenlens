@@ -2,21 +2,9 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { trpc } from '../../../../trpc/client.ts'
+import { IconBell, IconPlus, IconX, IconTrendingUp, IconShieldCheck } from '@tabler/icons-react'
 
-const PROVIDER_BADGE: Record<string, string> = {
-  openai: 'bg-blue-100 text-blue-800',
-  anthropic: 'bg-orange-100 text-orange-800',
-  gemini: 'bg-green-100 text-green-800',
-}
-
-const THRESHOLD_OPTIONS = [
-  { label: '50%', value: 50 },
-  { label: '70%', value: 70 },
-  { label: '80%', value: 80 },
-  { label: '90%', value: 90 },
-  { label: '95%', value: 95 },
-]
-
+const THRESHOLD_OPTIONS = [50, 70, 80, 90, 95]
 const COOLDOWN_OPTIONS = [
   { label: '15 min', value: 15 },
   { label: '30 min', value: 30 },
@@ -24,12 +12,6 @@ const COOLDOWN_OPTIONS = [
   { label: '4 hours', value: 240 },
   { label: '24 hours', value: 1440 },
 ]
-
-function barColor(pct: number): string {
-  if (pct >= 100) return 'bg-red-500'
-  if (pct >= 80) return 'bg-yellow-500'
-  return 'bg-green-500'
-}
 
 function formatCooldown(min: number | null): string {
   if (!min) return '—'
@@ -40,29 +22,35 @@ function formatCooldown(min: number | null): string {
   return `${h}h ${m}m`
 }
 
-function ProgressBar({
-  percentage,
-  ariaLabel,
-}: {
-  percentage: number
-  ariaLabel: string
-}) {
-  const capped = Math.min(percentage, 100)
-  return (
-    <div
-      role="progressbar"
-      aria-valuenow={Math.round(capped)}
-      aria-valuemin={0}
-      aria-valuemax={100}
-      aria-label={ariaLabel}
-      className="w-full bg-gray-100 rounded-full h-2"
-    >
-      <div
-        className={`h-2 rounded-full transition-all ${barColor(percentage)}`}
-        style={{ width: `${capped}%` }}
-      />
-    </div>
-  )
+function barColor(pct: number): string {
+  if (pct >= 100) return 'var(--err)'
+  if (pct >= 80) return 'var(--warn)'
+  return 'var(--ok)'
+}
+
+function statusChip(pct: number): { label: string; bg: string; color: string } {
+  if (pct >= 100) return { label: 'Blocked', bg: '#FEF2F2', color: '#BA1A1A' }
+  if (pct >= 80) return { label: 'Warning', bg: '#FEF3C7', color: '#D97706' }
+  return { label: 'Active', bg: '#DCFCE7', color: '#16A34A' }
+}
+
+const labelStyle: React.CSSProperties = {
+  fontSize: 12,
+  fontWeight: 500,
+  color: 'var(--t2)',
+  display: 'block',
+  marginBottom: 6,
+}
+
+const inputStyle: React.CSSProperties = {
+  width: '100%',
+  padding: '9px 12px',
+  border: '1px solid var(--border)',
+  borderRadius: 8,
+  fontSize: 13,
+  background: 'var(--bg)',
+  color: 'var(--t1)',
+  outline: 'none',
 }
 
 export default function BudgetPage() {
@@ -97,237 +85,617 @@ export default function BudgetPage() {
 
   const isLoading = wsLoading || keyLoading || alertLoading
 
-  if (isLoading) {
-    return <div className="text-sm text-gray-500">Loading…</div>
-  }
-
-  const hasAnyCap = wsBudget !== null || keyBudgets.length > 0
-
   return (
-    <div className="space-y-6">
-      <h1 className="text-xl font-semibold text-gray-900">Budget</h1>
+    <div style={{ padding: 24 }}>
+      {/* Header */}
+      <div style={{ marginBottom: 20 }}>
+        <div style={{ fontSize: 17, fontWeight: 600, letterSpacing: '-0.01em' }}>
+          Budget & Alerts
+        </div>
+        <div style={{ fontSize: 12, color: 'var(--t3)', marginTop: 2 }}>
+          Spend enforcement and notification rules
+        </div>
+      </div>
 
-      {/* Workspace budget */}
-      {wsBudget ? (
-        <div className="rounded-xl border border-gray-200 bg-white p-6">
-          <h2 className="text-sm font-medium text-gray-900 mb-4">Workspace Budget</h2>
-          {wsBudget.percentage >= 100 && (
-            <div className="mb-4 rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">
-              Workspace budget exceeded — requests are being blocked
-            </div>
-          )}
-          {wsBudget.percentage >= 80 && wsBudget.percentage < 100 && (
-            <div className="mb-4 rounded-lg bg-yellow-50 border border-yellow-200 px-4 py-3 text-sm text-yellow-700">
-              Approaching workspace limit
-            </div>
-          )}
-          <div className="space-y-2">
-            <div className="flex justify-between text-sm">
-              <span className="text-gray-700">
-                ${wsBudget.spend.toFixed(4)} spent of ${wsBudget.cap.toFixed(2)} cap this month
-              </span>
-              <span className="font-medium text-gray-900">{Math.round(wsBudget.percentage)}%</span>
-            </div>
-            <ProgressBar
-              percentage={wsBudget.percentage}
-              ariaLabel={`Workspace budget: ${Math.round(wsBudget.percentage)}% used`}
+      {/* Loading skeleton */}
+      {isLoading ? (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          {[1, 2].map((i) => (
+            <div
+              key={i}
+              style={{
+                background: 'var(--surface)',
+                border: '1px solid var(--border)',
+                borderRadius: 14,
+                padding: '18px',
+                height: 120,
+              }}
             />
-            <p className="text-xs text-gray-400">${wsBudget.remaining.toFixed(4)} remaining · Resets on the 1st of next month</p>
-          </div>
+          ))}
         </div>
       ) : (
-        <div className="rounded-xl border border-dashed border-gray-300 bg-gray-50 p-6">
-          <p className="text-sm text-gray-500">No workspace budget cap set.</p>
-          <Link href="/dashboard/settings" className="text-sm text-indigo-600 hover:underline mt-1 inline-block">
-            Set one in Settings →
-          </Link>
-        </div>
-      )}
+        <>
+          {/* Workspace budget */}
+          {wsBudget ? (
+            <div
+              style={{
+                background: 'var(--surface)',
+                border: '1px solid var(--border)',
+                borderRadius: 14,
+                padding: 18,
+                marginBottom: 16,
+              }}
+            >
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  marginBottom: 14,
+                }}
+              >
+                <div style={{ fontSize: 13, fontWeight: 500 }}>Workspace Budget</div>
+                <Link
+                  href="/dashboard/settings"
+                  style={{ fontSize: 12, color: 'var(--pri)', textDecoration: 'none' }}
+                >
+                  Edit cap →
+                </Link>
+              </div>
 
-      {/* Per-key budgets */}
-      <div>
-        <h2 className="text-sm font-medium text-gray-900 mb-3">Key Budgets</h2>
-        {keyBudgets.length > 0 ? (
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            {keyBudgets.map((kb) => (
-              <div key={kb.keyId} className="rounded-xl border border-gray-200 bg-white p-5">
-                <div className="flex items-center gap-2 mb-3">
-                  <span className="text-sm font-medium text-gray-900 truncate max-w-[160px]" title={kb.keyName}>
-                    {kb.keyName.length > 24 ? `${kb.keyName.slice(0, 24)}…` : kb.keyName}
-                  </span>
-                  <span
-                    className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${PROVIDER_BADGE[kb.provider] ?? 'bg-gray-100 text-gray-700'}`}
-                  >
-                    {kb.provider}
-                  </span>
-                  {kb.percentage >= 100 && (
-                    <span className="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium bg-red-100 text-red-700">
-                      BLOCKED
-                    </span>
-                  )}
-                  {kb.percentage >= 80 && kb.percentage < 100 && (
-                    <span className="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium bg-yellow-100 text-yellow-700">
-                      WARNING
-                    </span>
-                  )}
+              {wsBudget.percentage >= 100 && (
+                <div
+                  style={{
+                    padding: '10px 14px',
+                    borderRadius: 8,
+                    background: '#FEF2F2',
+                    border: '1px solid #FCA5A5',
+                    fontSize: 12,
+                    color: 'var(--err)',
+                    marginBottom: 14,
+                  }}
+                >
+                  Workspace budget exceeded — requests are being blocked
                 </div>
-                <div className="space-y-1.5">
-                  <ProgressBar
-                    percentage={kb.percentage}
-                    ariaLabel={`${kb.keyName} budget: ${Math.round(kb.percentage)}% used`}
+              )}
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12 }}>
+                  <span style={{ fontFamily: 'monospace' }}>
+                    ${wsBudget.spend.toFixed(4)} / ${wsBudget.cap.toFixed(2)} cap
+                  </span>
+                  <span style={{ fontWeight: 600, color: barColor(wsBudget.percentage) }}>
+                    {Math.round(wsBudget.percentage)}%
+                  </span>
+                </div>
+                <div
+                  style={{
+                    height: 10,
+                    background: 'var(--border)',
+                    borderRadius: 9999,
+                    overflow: 'hidden',
+                  }}
+                >
+                  <div
+                    style={{
+                      height: '100%',
+                      borderRadius: 9999,
+                      background: barColor(wsBudget.percentage),
+                      width: `${Math.min(wsBudget.percentage, 100)}%`,
+                      transition: 'width 0.3s',
+                    }}
                   />
-                  <div className="flex justify-between text-xs text-gray-500">
-                    <span>${kb.spend.toFixed(4)} / ${kb.cap.toFixed(2)}</span>
-                    <span>{Math.round(kb.percentage)}%</span>
-                  </div>
+                </div>
+                <div
+                  style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    fontSize: 11,
+                    color: 'var(--t3)',
+                    fontFamily: 'monospace',
+                  }}
+                >
+                  <span>${wsBudget.spend.toFixed(4)} used</span>
+                  <span>${wsBudget.remaining.toFixed(4)} remaining</span>
                 </div>
               </div>
-            ))}
-          </div>
-        ) : (
-          <div className="rounded-xl border border-dashed border-gray-300 bg-gray-50 p-6">
-            <p className="text-sm text-gray-500">No per-key budget caps set.</p>
-            <p className="text-xs text-gray-400 mt-1">Create a key with a budget cap to track it here.</p>
-            <Link href="/dashboard/keys" className="text-sm text-indigo-600 hover:underline mt-2 inline-block">
-              Manage Keys →
-            </Link>
-          </div>
-        )}
-      </div>
-
-      {!hasAnyCap && (
-        <div className="rounded-xl border border-gray-200 bg-white py-12 text-center">
-          <p className="text-gray-500 text-sm mb-1">No budget caps configured.</p>
-          <p className="text-gray-400 text-sm mb-4">
-            Set a budget cap on a virtual key or your workspace to enable spend enforcement.
-          </p>
-          <div className="flex items-center justify-center gap-3">
-            <Link
-              href="/dashboard/keys"
-              className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 transition-colors"
-            >
-              Manage Keys
-            </Link>
-            <Link
-              href="/dashboard/settings"
-              className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
-            >
-              Workspace Settings
-            </Link>
-          </div>
-        </div>
-      )}
-
-      {/* Alert configuration */}
-      <div className="rounded-xl border border-gray-200 bg-white">
-        <div className="px-6 py-5 border-b border-gray-100 flex items-center justify-between">
-          <div>
-            <h2 className="text-sm font-semibold text-gray-900">Budget Alerts</h2>
-            <p className="text-xs text-gray-500 mt-0.5">Get notified when spend approaches your budget caps.</p>
-          </div>
-          <button
-            onClick={() => setShowAddDialog(true)}
-            className="rounded-lg bg-indigo-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-indigo-700 transition-colors"
-          >
-            Add Alert
-          </button>
-        </div>
-
-        {alertConfigs.length > 0 ? (
-          <div className="divide-y divide-gray-100">
-            <div className="grid grid-cols-[1fr_80px_80px_60px_80px] gap-4 px-6 py-2 text-xs font-medium text-gray-400 uppercase tracking-wide">
-              <span>Channel</span>
-              <span>Threshold</span>
-              <span>Cooldown</span>
-              <span>Active</span>
-              <span />
             </div>
-            {alertConfigs.map((cfg) => (
-              <div key={cfg.id} className="grid grid-cols-[1fr_80px_80px_60px_80px] gap-4 items-center px-6 py-3">
-                <span
-                  className="text-sm text-gray-700 truncate"
-                  title={cfg.channel}
+          ) : (
+            <div
+              style={{
+                background: 'var(--surface)',
+                border: '1px dashed var(--border)',
+                borderRadius: 14,
+                padding: '24px 20px',
+                marginBottom: 16,
+                textAlign: 'center',
+              }}
+            >
+              <div style={{ fontSize: 12, color: 'var(--t3)', marginBottom: 8 }}>
+                No workspace budget cap set.
+              </div>
+              <Link
+                href="/dashboard/settings"
+                style={{ fontSize: 12, color: 'var(--pri)', textDecoration: 'none' }}
+              >
+                Set one in Settings →
+              </Link>
+            </div>
+          )}
+
+          {/* Per-key budgets */}
+          <div
+            style={{
+              background: 'var(--surface)',
+              border: '1px solid var(--border)',
+              borderRadius: 14,
+              overflow: 'hidden',
+              marginBottom: 16,
+            }}
+          >
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                padding: '14px 18px',
+                borderBottom: '1px solid var(--border)',
+              }}
+            >
+              <div style={{ fontSize: 13, fontWeight: 500 }}>Key Budgets</div>
+              <Link
+                href="/dashboard/keys"
+                style={{ fontSize: 12, color: 'var(--pri)', textDecoration: 'none' }}
+              >
+                Manage Keys →
+              </Link>
+            </div>
+
+            {keyBudgets.length === 0 ? (
+              <div
+                style={{
+                  padding: '32px 20px',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  textAlign: 'center',
+                }}
+              >
+                <div
+                  style={{
+                    width: 48,
+                    height: 48,
+                    borderRadius: 14,
+                    background: '#FFF7ED',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    marginBottom: 14,
+                  }}
                 >
-                  {cfg.channel.length > 40 ? `${cfg.channel.slice(0, 40)}…` : cfg.channel}
-                </span>
-                <span className="text-sm text-gray-600">at {cfg.threshold_pct}%</span>
-                <span className="text-sm text-gray-600">{formatCooldown(cfg.cooldown_min)}</span>
-                <label className="relative inline-flex items-center cursor-pointer">
-                  <input
-                    type="checkbox"
-                    className="sr-only peer"
-                    checked={cfg.is_active ?? false}
-                    onChange={(e) =>
-                      updateAlert.mutate({ id: cfg.id, isActive: e.target.checked })
-                    }
-                  />
-                  <div className="w-9 h-5 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-indigo-600" />
-                </label>
+                  <IconShieldCheck size={22} color="var(--warn)" />
+                </div>
+                <div style={{ fontWeight: 600, marginBottom: 6 }}>No Budget Caps</div>
+                <div
+                  style={{
+                    fontSize: 12,
+                    color: 'var(--t3)',
+                    maxWidth: 220,
+                    lineHeight: 1.6,
+                    marginBottom: 16,
+                  }}
+                >
+                  Create a virtual key with a monthly budget cap to track spend here.
+                </div>
+                <Link
+                  href="/dashboard/keys"
+                  style={{
+                    padding: '8px 18px',
+                    borderRadius: 8,
+                    background: 'var(--pri)',
+                    color: '#fff',
+                    fontSize: 12,
+                    fontWeight: 500,
+                    textDecoration: 'none',
+                  }}
+                >
+                  + Create Key
+                </Link>
+              </div>
+            ) : (
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, padding: 18 }}>
+                {keyBudgets.map((kb) => {
+                  const chip = statusChip(kb.percentage)
+                  return (
+                    <div
+                      key={kb.keyId}
+                      style={{
+                        background: 'var(--bg)',
+                        border: '1px solid var(--border)',
+                        borderRadius: 10,
+                        padding: '14px 16px',
+                      }}
+                    >
+                      <div
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 8,
+                          marginBottom: 10,
+                        }}
+                      >
+                        <span
+                          style={{
+                            fontSize: 12,
+                            fontWeight: 500,
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            whiteSpace: 'nowrap',
+                            flex: 1,
+                          }}
+                          title={kb.keyName}
+                        >
+                          {kb.keyName.length > 20 ? `${kb.keyName.slice(0, 20)}…` : kb.keyName}
+                        </span>
+                        <span
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            padding: '2px 8px',
+                            borderRadius: 9999,
+                            fontSize: 10,
+                            fontWeight: 500,
+                            background: chip.bg,
+                            color: chip.color,
+                            flexShrink: 0,
+                          }}
+                        >
+                          {chip.label}
+                        </span>
+                      </div>
+                      <div
+                        style={{
+                          height: 5,
+                          background: 'var(--border)',
+                          borderRadius: 9999,
+                          overflow: 'hidden',
+                          marginBottom: 8,
+                        }}
+                      >
+                        <div
+                          style={{
+                            height: '100%',
+                            borderRadius: 9999,
+                            background: barColor(kb.percentage),
+                            width: `${Math.min(kb.percentage, 100)}%`,
+                          }}
+                        />
+                      </div>
+                      <div
+                        style={{
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          fontSize: 11,
+                          color: 'var(--t3)',
+                          fontFamily: 'monospace',
+                        }}
+                      >
+                        <span>${kb.spend.toFixed(4)} / ${kb.cap.toFixed(2)}</span>
+                        <span style={{ color: barColor(kb.percentage), fontWeight: 600 }}>
+                          {Math.round(kb.percentage)}%
+                        </span>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+          </div>
+
+          {/* Alert Rules */}
+          <div
+            style={{
+              background: 'var(--surface)',
+              border: '1px solid var(--border)',
+              borderRadius: 14,
+              overflow: 'hidden',
+            }}
+          >
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                padding: '14px 18px',
+                borderBottom: '1px solid var(--border)',
+              }}
+            >
+              <div>
+                <div style={{ fontSize: 13, fontWeight: 500 }}>Alert Rules</div>
+                <div style={{ fontSize: 11, color: 'var(--t3)', marginTop: 2 }}>
+                  Get notified before budgets are exceeded
+                </div>
+              </div>
+              <button
+                onClick={() => setShowAddDialog(true)}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 6,
+                  padding: '8px 14px',
+                  borderRadius: 8,
+                  background: 'var(--pri)',
+                  color: '#fff',
+                  fontSize: 12,
+                  fontWeight: 500,
+                  border: 'none',
+                  cursor: 'pointer',
+                }}
+              >
+                <IconPlus size={13} />
+                New Alert Rule
+              </button>
+            </div>
+
+            {alertConfigs.length === 0 ? (
+              <div
+                style={{
+                  padding: '32px 20px',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  textAlign: 'center',
+                }}
+              >
+                <div
+                  style={{
+                    width: 48,
+                    height: 48,
+                    borderRadius: 14,
+                    background: '#FEF2F2',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    marginBottom: 14,
+                  }}
+                >
+                  <IconBell size={22} color="var(--err)" />
+                </div>
+                <div style={{ fontWeight: 600, marginBottom: 6 }}>No Alert Rules</div>
+                <div
+                  style={{
+                    fontSize: 12,
+                    color: 'var(--t3)',
+                    maxWidth: 220,
+                    lineHeight: 1.6,
+                    marginBottom: 16,
+                  }}
+                >
+                  Get notified before budgets are exceeded — not after the bill arrives.
+                </div>
                 <button
-                  onClick={() => setDeleteConfirmId(cfg.id)}
-                  className="text-xs text-red-500 hover:text-red-700 text-right"
+                  onClick={() => setShowAddDialog(true)}
+                  style={{
+                    padding: '8px 18px',
+                    borderRadius: 8,
+                    background: 'var(--pri)',
+                    color: '#fff',
+                    fontSize: 12,
+                    fontWeight: 500,
+                    border: 'none',
+                    cursor: 'pointer',
+                  }}
                 >
-                  Delete
+                  + New Alert Rule
                 </button>
               </div>
-            ))}
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10, padding: 18 }}>
+                {alertConfigs.map((cfg) => {
+                  const borderColor =
+                    cfg.threshold_pct >= 100
+                      ? 'var(--err)'
+                      : cfg.threshold_pct >= 80
+                        ? 'var(--warn)'
+                        : 'var(--pri)'
+                  return (
+                    <div
+                      key={cfg.id}
+                      style={{
+                        background: 'var(--surface)',
+                        border: '1px solid var(--border)',
+                        borderLeft: `3px solid ${borderColor}`,
+                        borderRadius: 14,
+                        padding: '14px 16px',
+                      }}
+                    >
+                      <div
+                        style={{
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          alignItems: 'flex-start',
+                        }}
+                      >
+                        <div>
+                          <div style={{ fontWeight: 500, marginBottom: 4, fontSize: 13 }}>
+                            Budget Alert — {cfg.threshold_pct}%
+                          </div>
+                          <div style={{ fontSize: 12, color: 'var(--t3)' }}>
+                            {cfg.channel} · cooldown {formatCooldown(cfg.cooldown_min)}
+                          </div>
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                          {/* Toggle */}
+                          <label
+                            style={{
+                              position: 'relative',
+                              display: 'inline-block',
+                              width: 40,
+                              height: 22,
+                              flexShrink: 0,
+                            }}
+                          >
+                            <input
+                              type="checkbox"
+                              style={{ opacity: 0, width: 0, height: 0, position: 'absolute' }}
+                              checked={cfg.is_active ?? false}
+                              onChange={(e) =>
+                                updateAlert.mutate({ id: cfg.id, isActive: e.target.checked })
+                              }
+                            />
+                            <span
+                              style={{
+                                position: 'absolute',
+                                inset: 0,
+                                background: cfg.is_active ? 'var(--pri)' : 'var(--border)',
+                                borderRadius: 9999,
+                                cursor: 'pointer',
+                                transition: '0.15s',
+                              }}
+                            >
+                              <span
+                                style={{
+                                  position: 'absolute',
+                                  width: 16,
+                                  height: 16,
+                                  borderRadius: '50%',
+                                  background: '#fff',
+                                  top: 3,
+                                  left: cfg.is_active ? 21 : 3,
+                                  transition: '0.15s',
+                                  boxShadow: '0 1px 3px rgba(0,0,0,.15)',
+                                }}
+                              />
+                            </span>
+                          </label>
+                          <button
+                            onClick={() => setDeleteConfirmId(cfg.id)}
+                            style={{
+                              padding: '4px 10px',
+                              borderRadius: 8,
+                              border: '1px solid #FCA5A5',
+                              background: '#FEF2F2',
+                              fontSize: 11,
+                              color: 'var(--err)',
+                              cursor: 'pointer',
+                            }}
+                          >
+                            Delete
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
           </div>
-        ) : (
-          <div className="px-6 py-10 text-center">
-            <p className="text-sm text-gray-500">No alerts configured.</p>
-            <p className="text-xs text-gray-400 mt-1">Add an alert to get notified before you hit your budget limit.</p>
-          </div>
-        )}
-      </div>
+        </>
+      )}
 
-      {/* Add alert dialog */}
+      {/* Add Alert slide-over */}
       {showAddDialog && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-          <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-xl">
-            <h3 className="text-base font-semibold text-gray-900 mb-4">Add Budget Alert</h3>
-
-            <div className="space-y-4">
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(28,27,34,0.35)',
+            zIndex: 400,
+            display: 'flex',
+            justifyContent: 'flex-end',
+          }}
+          onClick={() => setShowAddDialog(false)}
+        >
+          <div
+            style={{
+              width: 480,
+              height: '100%',
+              background: 'var(--surface)',
+              borderLeft: '1px solid var(--border)',
+              display: 'flex',
+              flexDirection: 'column',
+              boxShadow: '-8px 0 32px rgba(0,0,0,.12)',
+              overflowY: 'auto',
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                padding: '18px 20px',
+                borderBottom: '1px solid var(--border)',
+                flexShrink: 0,
+              }}
+            >
+              <div style={{ fontSize: 15, fontWeight: 600 }}>New Alert Rule</div>
+              <button
+                onClick={() => setShowAddDialog(false)}
+                style={{
+                  width: 28,
+                  height: 28,
+                  borderRadius: 6,
+                  border: '1px solid var(--border)',
+                  background: 'var(--surface)',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: 'var(--t2)',
+                }}
+              >
+                <IconX size={16} />
+              </button>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 16, padding: 20 }}>
+              {createAlert.error && (
+                <div
+                  style={{
+                    padding: '10px 14px',
+                    borderRadius: 8,
+                    background: '#FEF2F2',
+                    border: '1px solid #FCA5A5',
+                    fontSize: 12,
+                    color: 'var(--err)',
+                  }}
+                >
+                  {createAlert.error.message}
+                </div>
+              )}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Channel
-                </label>
+                <label style={labelStyle}>Channel (email or webhook URL)</label>
                 <input
                   type="text"
+                  style={inputStyle}
+                  placeholder="user@example.com or https://…"
                   value={newChannel}
                   onChange={(e) => setNewChannel(e.target.value)}
-                  placeholder="Email or webhook URL"
-                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
                 />
-                <p className="text-xs text-gray-400 mt-1">
+                <div style={{ fontSize: 11, color: 'var(--t3)', marginTop: 4 }}>
                   Email: user@example.com · Webhook: https://…
-                </p>
+                </div>
               </div>
-
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Alert threshold
-                </label>
+                <label style={labelStyle}>Alert threshold</label>
                 <select
+                  style={{ ...inputStyle, background: 'var(--surface)', cursor: 'pointer' }}
                   value={newThreshold}
                   onChange={(e) => setNewThreshold(Number(e.target.value))}
-                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
                 >
-                  {THRESHOLD_OPTIONS.map((opt) => (
-                    <option key={opt.value} value={opt.value}>
-                      {opt.label}
+                  {THRESHOLD_OPTIONS.map((pct) => (
+                    <option key={pct} value={pct}>
+                      {pct}% of budget
                     </option>
                   ))}
                 </select>
               </div>
-
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Cooldown between alerts
-                </label>
+                <label style={labelStyle}>Cooldown between alerts</label>
                 <select
+                  style={{ ...inputStyle, background: 'var(--surface)', cursor: 'pointer' }}
                   value={newCooldown}
                   onChange={(e) => setNewCooldown(Number(e.target.value))}
-                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
                 >
                   {COOLDOWN_OPTIONS.map((opt) => (
                     <option key={opt.value} value={opt.value}>
@@ -336,43 +704,95 @@ export default function BudgetPage() {
                   ))}
                 </select>
               </div>
-            </div>
-
-            <div className="mt-6 flex justify-end gap-3">
-              <button
-                onClick={() => setShowAddDialog(false)}
-                className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={() =>
-                  createAlert.mutate({
-                    channel: newChannel,
-                    thresholdPct: newThreshold,
-                    cooldownMin: newCooldown,
-                  })
-                }
-                disabled={!newChannel.trim() || createAlert.isPending}
-                className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {createAlert.isPending ? 'Saving…' : 'Add Alert'}
-              </button>
+              <div style={{ display: 'flex', gap: 10, paddingTop: 8 }}>
+                <button
+                  onClick={() => setShowAddDialog(false)}
+                  style={{
+                    flex: 1,
+                    padding: '9px 14px',
+                    borderRadius: 8,
+                    border: '1px solid var(--border)',
+                    background: 'var(--surface)',
+                    fontSize: 12,
+                    color: 'var(--t2)',
+                    cursor: 'pointer',
+                  }}
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={() =>
+                    createAlert.mutate({
+                      channel: newChannel,
+                      thresholdPct: newThreshold,
+                      cooldownMin: newCooldown,
+                    })
+                  }
+                  disabled={!newChannel.trim() || createAlert.isPending}
+                  style={{
+                    flex: 2,
+                    padding: '9px 14px',
+                    borderRadius: 8,
+                    background: 'var(--pri)',
+                    color: '#fff',
+                    fontSize: 12,
+                    fontWeight: 500,
+                    border: 'none',
+                    cursor: !newChannel.trim() || createAlert.isPending ? 'not-allowed' : 'pointer',
+                    opacity: !newChannel.trim() || createAlert.isPending ? 0.6 : 1,
+                  }}
+                >
+                  {createAlert.isPending ? 'Saving…' : 'Create Alert'}
+                </button>
+              </div>
             </div>
           </div>
         </div>
       )}
 
-      {/* Delete confirm dialog */}
+      {/* Delete confirm */}
       {deleteConfirmId && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-          <div className="w-full max-w-sm rounded-xl bg-white p-6 shadow-xl">
-            <h3 className="text-base font-semibold text-gray-900 mb-2">Delete alert?</h3>
-            <p className="text-sm text-gray-500 mb-6">This alert config will be permanently removed.</p>
-            <div className="flex justify-end gap-3">
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(28,27,34,0.35)',
+            zIndex: 500,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: 16,
+          }}
+          onClick={() => setDeleteConfirmId(null)}
+        >
+          <div
+            style={{
+              background: 'var(--surface)',
+              borderRadius: 14,
+              padding: 24,
+              width: '100%',
+              maxWidth: 380,
+              boxShadow: '0 8px 32px rgba(0,0,0,.12)',
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div style={{ fontSize: 15, fontWeight: 600, marginBottom: 8 }}>Delete alert?</div>
+            <div style={{ fontSize: 13, color: 'var(--t2)', lineHeight: 1.6, marginBottom: 20 }}>
+              This alert config will be permanently removed.
+            </div>
+            <div style={{ display: 'flex', gap: 10 }}>
               <button
                 onClick={() => setDeleteConfirmId(null)}
-                className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+                style={{
+                  flex: 1,
+                  padding: '9px 14px',
+                  borderRadius: 8,
+                  border: '1px solid var(--border)',
+                  background: 'var(--surface)',
+                  fontSize: 12,
+                  color: 'var(--t2)',
+                  cursor: 'pointer',
+                }}
               >
                 Cancel
               </button>
@@ -381,7 +801,17 @@ export default function BudgetPage() {
                   deleteAlert.mutate({ id: deleteConfirmId })
                   setDeleteConfirmId(null)
                 }}
-                className="rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700"
+                style={{
+                  flex: 2,
+                  padding: '9px 14px',
+                  borderRadius: 8,
+                  background: 'var(--err)',
+                  color: '#fff',
+                  fontSize: 12,
+                  fontWeight: 500,
+                  border: 'none',
+                  cursor: 'pointer',
+                }}
               >
                 Delete
               </button>

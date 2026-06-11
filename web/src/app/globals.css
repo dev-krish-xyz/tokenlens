@@ -1,1 +1,37 @@
 @import "tailwindcss";
+
+:root {
+  --bg: #FAFAFA;
+  --surface: #fff;
+  --border: #EAEAEA;
+  --pri: #5A4EC7;
+  --pri-m: #EDE9FF;
+  --pri-d: #4233AE;
+  --t1: #1C1B22;
+  --t2: #474553;
+  --t3: #787585;
+  --ok: #16A34A;
+  --warn: #D97706;
+  --err: #BA1A1A;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  height: 100%;
+}
+
+body {
+  height: 100%;
+  background: var(--bg);
+  color: var(--t1);
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  font-size: 13px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}

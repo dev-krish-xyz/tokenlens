@@ -1,6 +1,7 @@
 'use client'
 import { useQueryState, parseAsInteger } from 'nuqs'
 import { trpc } from '../../../../trpc/client.ts'
+import { IconUsers } from '@tabler/icons-react'
 
 const DATE_OPTIONS = [
   { label: '7d', value: 7 },
@@ -8,46 +9,86 @@ const DATE_OPTIONS = [
   { label: '90d', value: 90 },
 ]
 
-function CustomerTableHeaders() {
-  return (
-    <>
-      <th className="text-left px-4 py-3 font-medium text-gray-500">Customer ID</th>
-      <th className="text-right px-4 py-3 font-medium text-gray-500">Total Cost</th>
-      <th className="text-right px-4 py-3 font-medium text-gray-500">Requests</th>
-      <th className="text-right px-4 py-3 font-medium text-gray-500 whitespace-nowrap">
-        Avg Cost/Req
-      </th>
-      <th className="text-right px-4 py-3 font-medium text-gray-500 whitespace-nowrap">
-        Avg Latency
-      </th>
-      <th className="text-left px-4 py-3 font-medium text-gray-500">Top Model</th>
-    </>
-  )
+const TH_STYLE: React.CSSProperties = {
+  padding: '9px 16px',
+  textAlign: 'left',
+  fontSize: 10,
+  fontWeight: 500,
+  color: 'var(--t3)',
+  textTransform: 'uppercase',
+  letterSpacing: '0.05em',
+  background: 'var(--bg)',
+  borderBottom: '1px solid var(--border)',
+  whiteSpace: 'nowrap',
+}
+
+const TD_STYLE: React.CSSProperties = {
+  padding: '11px 16px',
+  fontSize: 12,
+  borderBottom: '1px solid var(--border)',
 }
 
 export default function CustomersPage() {
   const [days, setDays] = useQueryState('days', parseAsInteger.withDefault(30))
   const { data = [], isLoading } = trpc.cost.getPerCustomerCost.useQuery({ days })
 
+  const totalCost = data.reduce((s, c) => s + c.totalCost, 0)
+  const totalRequests = data.reduce((s, c) => s + c.requestCount, 0)
+  const maxCost = Math.max(...data.map((c) => c.totalCost), 1)
+
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
+    <div style={{ padding: 24 }}>
+      {/* Header */}
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'flex-start',
+          justifyContent: 'space-between',
+          marginBottom: 20,
+        }}
+      >
         <div>
-          <h1 className="text-xl font-semibold text-gray-900">Customer Cost Attribution</h1>
-          <p className="text-sm text-gray-500 mt-0.5">
-            AI spend broken down by customer ID (X-TL-User-Id header)
-          </p>
+          <div style={{ fontSize: 17, fontWeight: 600, letterSpacing: '-0.01em' }}>Customers</div>
+          <div style={{ fontSize: 12, color: 'var(--t3)', marginTop: 2 }}>
+            AI cost per customer via{' '}
+            <code
+              style={{
+                fontFamily: 'monospace',
+                background: '#F5F5F5',
+                padding: '1px 5px',
+                borderRadius: 4,
+                fontSize: 11,
+              }}
+            >
+              X-TL-User-Id
+            </code>{' '}
+            header
+          </div>
         </div>
-        <div className="flex items-center gap-0.5 rounded-lg border border-gray-200 bg-white p-1">
+        <div
+          style={{
+            display: 'flex',
+            gap: 4,
+            background: 'var(--border)',
+            borderRadius: 10,
+            padding: 4,
+          }}
+        >
           {DATE_OPTIONS.map((opt) => (
             <button
               key={opt.value}
               onClick={() => void setDays(opt.value)}
-              className={`rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
-                days === opt.value
-                  ? 'bg-indigo-600 text-white'
-                  : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
-              }`}
+              style={{
+                padding: '6px 14px',
+                borderRadius: 7,
+                fontSize: 12,
+                fontWeight: 500,
+                cursor: 'pointer',
+                border: 'none',
+                background: days === opt.value ? 'var(--surface)' : 'transparent',
+                color: days === opt.value ? 'var(--t1)' : 'var(--t3)',
+                boxShadow: days === opt.value ? '0 1px 4px rgba(0,0,0,.08)' : 'none',
+              }}
             >
               {opt.label}
             </button>
@@ -55,77 +96,273 @@ export default function CustomersPage() {
         </div>
       </div>
 
-      {isLoading ? (
-        <div className="overflow-hidden rounded-xl border border-gray-200 bg-white">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-gray-200 bg-gray-50">
-                <CustomerTableHeaders />
-              </tr>
-            </thead>
-            <tbody>
-              {Array.from({ length: 5 }).map((_, i) => (
-                <tr key={i} className="border-b border-gray-100">
-                  {Array.from({ length: 6 }).map((_, j) => (
-                    <td key={j} className="px-4 py-3">
-                      <div className="h-4 w-full animate-pulse rounded bg-gray-100" />
-                    </td>
-                  ))}
-                </tr>
-              ))}
-            </tbody>
-          </table>
+      {/* Banner */}
+      <div
+        style={{
+          background: 'var(--pri-m)',
+          border: '1px solid #C4B8FF',
+          borderRadius: 12,
+          padding: '14px 16px',
+          marginBottom: 16,
+          display: 'flex',
+          alignItems: 'flex-start',
+          gap: 12,
+        }}
+      >
+        <div style={{ fontSize: 18, color: 'var(--pri)', flexShrink: 0, marginTop: 1 }}>🧠</div>
+        <div>
+          <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--pri)', marginBottom: 3 }}>
+            Margin Intelligence
+          </div>
+          <div style={{ fontSize: 12, color: 'var(--t2)', lineHeight: 1.6 }}>
+            Tag requests with{' '}
+            <code
+              style={{
+                fontFamily: 'monospace',
+                background: '#fff',
+                padding: '1px 5px',
+                borderRadius: 4,
+                fontSize: 11,
+              }}
+            >
+              X-TL-User-Id
+            </code>{' '}
+            header to see per-customer AI cost. Identify which customers cost the most.
+          </div>
         </div>
-      ) : data.length === 0 ? (
-        <div className="space-y-4 rounded-xl border border-gray-200 bg-white px-8 py-16 text-center">
-          <p className="font-medium text-gray-700">No customer attribution data yet.</p>
-          <p className="text-sm text-gray-500">
-            Tag your requests with the X-TL-User-Id header to track per-customer costs.
-          </p>
-          <pre className="mx-auto max-w-xl overflow-x-auto rounded-lg bg-gray-900 px-4 py-3 text-left text-xs text-green-400">{`curl https://your-gateway.com/v1/chat/completions \\
-  -H 'Authorization: Bearer tl-vk-your-key' \\
-  -H 'X-TL-User-Id: customer_123' \\
-  -H 'Content-Type: application/json' \\
-  -d '{"model":"gpt-4o-mini","messages":[...]}'`}</pre>
-        </div>
-      ) : (
-        <div className="overflow-hidden rounded-xl border border-gray-200 bg-white">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-gray-200 bg-gray-50">
-                <CustomerTableHeaders />
-              </tr>
-            </thead>
-            <tbody>
-              {data.map((row, index) => (
-                <tr
-                  key={row.userIdTag}
-                  className={`border-b border-gray-100 last:border-0 ${
-                    index < 3
-                      ? 'bg-red-50 hover:bg-red-100'
-                      : 'hover:bg-gray-50'
-                  }`}
-                >
-                  <td className="px-4 py-3 font-mono text-gray-800">{row.userIdTag}</td>
-                  <td className="px-4 py-3 text-right font-semibold text-gray-900">
-                    ${row.totalCost.toFixed(4)}
-                  </td>
-                  <td className="px-4 py-3 text-right text-gray-600">
-                    {row.requestCount.toLocaleString()}
-                  </td>
-                  <td className="px-4 py-3 text-right font-mono text-gray-600">
-                    ${row.avgCostPerReq.toFixed(6)}
-                  </td>
-                  <td className="px-4 py-3 text-right text-gray-600">
-                    {Math.round(row.avgLatencyMs)}ms
-                  </td>
-                  <td className="px-4 py-3 font-mono text-gray-500">{row.topModel}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+      </div>
+
+      {/* KPI cards */}
+      {!isLoading && data.length > 0 && (
+        <div
+          style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(4, 1fr)',
+            gap: 12,
+            marginBottom: 20,
+          }}
+        >
+          {[
+            { label: 'Tracked Customers', value: data.length.toString() },
+            {
+              label: 'Total AI Cost',
+              value: `$${totalCost.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+            },
+            { label: 'Total Requests', value: totalRequests.toLocaleString() },
+            {
+              label: 'Top Spender',
+              value: data[0]
+                ? `$${data[0].totalCost.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+                : '—',
+            },
+          ].map((card) => (
+            <div
+              key={card.label}
+              style={{
+                background: 'var(--surface)',
+                border: '1px solid var(--border)',
+                borderRadius: 14,
+                padding: '16px 18px',
+              }}
+            >
+              <div
+                style={{
+                  fontSize: 11,
+                  color: 'var(--t3)',
+                  fontWeight: 500,
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.05em',
+                  marginBottom: 6,
+                }}
+              >
+                {card.label}
+              </div>
+              <div style={{ fontSize: 20, fontWeight: 600, fontFamily: 'monospace' }}>
+                {card.value}
+              </div>
+            </div>
+          ))}
         </div>
       )}
+
+      {/* Table */}
+      <div
+        style={{
+          background: 'var(--surface)',
+          border: '1px solid var(--border)',
+          borderRadius: 14,
+          overflow: 'hidden',
+        }}
+      >
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            padding: '14px 18px',
+            borderBottom: '1px solid var(--border)',
+          }}
+        >
+          <div style={{ fontSize: 13, fontWeight: 500 }}>Customer Margin Table</div>
+          {data.length > 0 && (
+            <span style={{ fontSize: 12, color: 'var(--t3)' }}>
+              {data.length} customers · last {days} days
+            </span>
+          )}
+        </div>
+
+        {isLoading ? (
+          <div style={{ padding: 16 }}>
+            {[1, 2, 3, 4].map((i) => (
+              <div
+                key={i}
+                style={{ height: 36, background: '#F5F5F5', borderRadius: 4, marginBottom: 10 }}
+              />
+            ))}
+          </div>
+        ) : data.length === 0 ? (
+          <div
+            style={{
+              padding: '48px 20px',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              textAlign: 'center',
+            }}
+          >
+            <div
+              style={{
+                width: 48,
+                height: 48,
+                borderRadius: 14,
+                background: 'var(--pri-m)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                marginBottom: 14,
+              }}
+            >
+              <IconUsers size={22} color="var(--pri)" />
+            </div>
+            <div style={{ fontWeight: 600, marginBottom: 6 }}>No Customers Tagged</div>
+            <div
+              style={{
+                fontSize: 12,
+                color: 'var(--t3)',
+                maxWidth: 280,
+                lineHeight: 1.6,
+              }}
+            >
+              Add{' '}
+              <code
+                style={{
+                  fontFamily: 'monospace',
+                  background: '#F5F5F5',
+                  padding: '1px 4px',
+                  borderRadius: 3,
+                  fontSize: 10,
+                }}
+              >
+                X-TL-User-Id
+              </code>{' '}
+              to your AI requests to unlock per-customer margin intelligence.
+            </div>
+          </div>
+        ) : (
+          <div style={{ overflowX: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+              <thead>
+                <tr>
+                  <th style={TH_STYLE}>Customer ID</th>
+                  <th style={{ ...TH_STYLE, textAlign: 'right' }}>AI Cost</th>
+                  <th style={{ ...TH_STYLE, textAlign: 'right' }}>Requests</th>
+                  <th style={{ ...TH_STYLE, textAlign: 'right' }}>Avg Cost/Req</th>
+                  <th style={{ ...TH_STYLE, textAlign: 'right' }}>Avg Latency</th>
+                  <th style={TH_STYLE}>Top Model</th>
+                  <th style={TH_STYLE}>Relative Spend</th>
+                </tr>
+              </thead>
+              <tbody>
+                {data.map((c, i) => {
+                  const pct = (c.totalCost / maxCost) * 100
+                  const rank = i + 1
+                  return (
+                    <tr
+                      key={c.userIdTag}
+                      style={{ borderBottom: '1px solid var(--border)' }}
+                      onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--bg)' }}
+                      onMouseLeave={(e) => { e.currentTarget.style.background = '' }}
+                    >
+                      <td style={TD_STYLE}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                          <span
+                            style={{
+                              width: 20,
+                              height: 20,
+                              borderRadius: '50%',
+                              background: rank === 1 ? '#FEF3C7' : 'var(--pri-m)',
+                              color: rank === 1 ? '#D97706' : 'var(--pri)',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              fontSize: 10,
+                              fontWeight: 700,
+                              flexShrink: 0,
+                            }}
+                          >
+                            {rank}
+                          </span>
+                          <span style={{ fontFamily: 'monospace', fontWeight: 500, fontSize: 11 }}>
+                            {c.userIdTag}
+                          </span>
+                        </div>
+                      </td>
+                      <td style={{ ...TD_STYLE, textAlign: 'right', fontFamily: 'monospace' }}>
+                        $
+                        {c.totalCost.toLocaleString('en-US', {
+                          minimumFractionDigits: 2,
+                          maximumFractionDigits: 4,
+                        })}
+                      </td>
+                      <td style={{ ...TD_STYLE, textAlign: 'right', fontFamily: 'monospace' }}>
+                        {c.requestCount.toLocaleString()}
+                      </td>
+                      <td style={{ ...TD_STYLE, textAlign: 'right', fontFamily: 'monospace' }}>
+                        ${c.avgCostPerReq.toFixed(6)}
+                      </td>
+                      <td style={{ ...TD_STYLE, textAlign: 'right', fontFamily: 'monospace' }}>
+                        {Math.round(c.avgLatencyMs)}ms
+                      </td>
+                      <td style={{ ...TD_STYLE, fontFamily: 'monospace', fontSize: 11 }}>
+                        {c.topModel}
+                      </td>
+                      <td style={{ ...TD_STYLE, minWidth: 100 }}>
+                        <div
+                          style={{
+                            height: 5,
+                            background: 'var(--border)',
+                            borderRadius: 9999,
+                            overflow: 'hidden',
+                          }}
+                        >
+                          <div
+                            style={{
+                              height: '100%',
+                              borderRadius: 9999,
+                              background: 'var(--pri)',
+                              width: `${pct}%`,
+                            }}
+                          />
+                        </div>
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
     </div>
   )
 }

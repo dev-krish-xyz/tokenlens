@@ -10,6 +10,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@tabler/icons-react": "^3.44.0",
     "@tanstack/react-query": "^5",
     "@tokenlens/shared": "workspace:*",
     "@trpc/client": "^11",

@@ -14,4 +14,5 @@ export interface GatewayVariables {
   userIdTag: string
   envTag: string
   ctx: WorkspaceContext
+  reservedCostUsd: number | undefined
 }

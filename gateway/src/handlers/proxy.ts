@@ -30,7 +30,10 @@ export async function proxyHandler(c: GatewayContext): Promise<Response> {
 
   if (!providerRes.ok) {
     await providerRes.text()
-    throw new ProviderError(`Provider returned ${providerRes.status}`, providerRes.status)
+    // The upstream status describes the platform's provider account, not the
+    // client's virtual key — pass through only 429 (backoff signal), map the rest to 502.
+    console.error(`[proxy] ${ctx.provider} upstream returned ${providerRes.status}`)
+    throw new ProviderError('Upstream provider request failed', providerRes.status === 429 ? 429 : 502)
   }
 
   const responseJson = await providerRes.json() as Record<string, unknown>

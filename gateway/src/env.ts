@@ -7,6 +7,13 @@ const result = z
     PORT: z.coerce.number().default(8787),
     GATEWAY_ENV: z.enum(['production', 'staging', 'dev']).default('dev'),
     NEXT_PUBLIC_APP_URL: z.string().url().default('http://localhost:3000'),
+    // Only set to 'true' when the gateway sits behind a proxy that strips and
+    // re-appends forwarding headers (e.g. Cloudflare). Otherwise clients can
+    // spoof X-Forwarded-For to escape rate limiting.
+    TRUST_PROXY_HEADERS: z
+      .enum(['true', 'false'])
+      .default('false')
+      .transform((v) => v === 'true'),
   })
   .safeParse(process.env);
 

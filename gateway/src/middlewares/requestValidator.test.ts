@@ -1,6 +1,7 @@
 import { describe, test, expect, mock } from 'bun:test'
 import { Hono } from 'hono'
-import { ValidationError, AppError, AuthError, RateLimitError, ProviderError } from '../../../packages/shared/src/errors'
+import { ValidationError, AppError, AuthError, RateLimitError, ProviderError, BudgetExceededError } from '../../../packages/shared/src/errors'
+import { calculateCost } from '../../../packages/shared/src/services/costCalculator'
 
 // Re-mock @tokenlens/shared comprehensively so it includes ValidationError even when
 // the rateLimiter test file ran first (its partial mock omits ValidationError).
@@ -16,16 +17,18 @@ mock.module('@tokenlens/shared', () => ({
       exec: mock(async () => []),
     }),
   },
+  calculateCost,
   ValidationError,
   AppError,
   AuthError,
   RateLimitError,
   ProviderError,
+  BudgetExceededError,
 }))
 
 // Mock gateway env.ts so GATEWAY_ENV is predictable in tests
 mock.module('../env.ts', () => ({
-  env: { PORT: 8787, GATEWAY_ENV: 'dev' as const },
+  env: { PORT: 8787, GATEWAY_ENV: 'dev' as const, TRUST_PROXY_HEADERS: false },
 }))
 
 const { requestValidator } = await import('./requestValidator.ts')
@@ -104,33 +107,44 @@ describe('body validation', () => {
   })
 })
 
-describe('SSRF guard', () => {
-  test('base_url field → ValidationError', async () => {
+describe('URL-override / SSRF guard', () => {
+  test('base_url field → ValidationError with explicit message', async () => {
     const res = await post({ ...validBody, base_url: 'http://example.com' })
     expect(res.status).toBe(400)
     const json = (await res.json()) as Res
     expect(json['code']).toBe('VALIDATION_ERROR')
+    expect(json['error']).toContain('base_url')
   })
 
-  test('169.254.169.254 in body → ValidationError', async () => {
-    const res = await post({ ...validBody, url: 'http://169.254.169.254/latest' })
+  test('api_base field → ValidationError', async () => {
+    const res = await post({ ...validBody, api_base: 'http://169.254.169.254/latest' })
     expect(res.status).toBe(400)
     const json = (await res.json()) as Res
     expect(json['code']).toBe('VALIDATION_ERROR')
   })
 
-  test('localhost in body → ValidationError', async () => {
+  test('unknown key rejected by strict schema (url: http://localhost)', async () => {
     const res = await post({ ...validBody, url: 'http://localhost:8080' })
     expect(res.status).toBe(400)
     const json = (await res.json()) as Res
     expect(json['code']).toBe('VALIDATION_ERROR')
   })
 
-  test('192.168. in body → ValidationError', async () => {
+  test('unknown key rejected by strict schema (url: http://192.168.1.1)', async () => {
     const res = await post({ ...validBody, url: 'http://192.168.1.1' })
     expect(res.status).toBe(400)
     const json = (await res.json()) as Res
     expect(json['code']).toBe('VALIDATION_ERROR')
+  })
+
+  test('IP-like strings in message content are NOT rejected (no substring false positives)', async () => {
+    const res = await post({
+      model: 'gpt-4o',
+      messages: [{ role: 'user', content: 'meet at 10.30 on localhost or 192.168.1.1 — version 10.5' }],
+    })
+    expect(res.status).toBe(200)
+    const json = (await res.json()) as Res
+    expect(json['ok']).toBe(true)
   })
 })
 

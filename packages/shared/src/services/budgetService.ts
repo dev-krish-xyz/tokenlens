@@ -24,6 +24,69 @@ export async function incrementSpend(
   await pipeline.exec()
 }
 
+/**
+ * Atomically reserve estimated cost against the monthly counters and return
+ * the post-increment totals. Because INCRBYFLOAT is atomic, concurrent
+ * requests each observe a total that includes their own reservation — they
+ * cannot jointly slip under the cap the way a read-then-check would allow.
+ */
+export async function reserveSpend(
+  virtualKeyId: string,
+  workspaceId: string,
+  costUsd: number
+): Promise<{ keySpend: number; wsSpend: number }> {
+  const month = getCurrentMonth()
+  const keyCounter = `spend:key:${month}:${virtualKeyId}`
+  const wsCounter = `spend:ws:${month}:${workspaceId}`
+  const ttl = 35 * 24 * 60 * 60
+
+  const pipeline = dragonflyClient.pipeline()
+  pipeline.incrbyfloat(keyCounter, costUsd)
+  pipeline.incrbyfloat(wsCounter, costUsd)
+  pipeline.expire(keyCounter, ttl)
+  pipeline.expire(wsCounter, ttl)
+  const results = await pipeline.exec()
+
+  return {
+    keySpend: parseFloat(String(results?.[0]?.[1] ?? '0')),
+    wsSpend: parseFloat(String(results?.[1]?.[1] ?? '0')),
+  }
+}
+
+/** Refund a reservation (request rejected or provider call failed). */
+export async function releaseSpend(
+  virtualKeyId: string,
+  workspaceId: string,
+  costUsd: number
+): Promise<void> {
+  if (costUsd <= 0) return
+  await adjustSpend(virtualKeyId, workspaceId, -costUsd)
+}
+
+/**
+ * Apply a signed correction to the monthly counters — used by the worker to
+ * replace the gateway's estimated reservation with the actual metered cost.
+ */
+export async function adjustSpend(
+  virtualKeyId: string,
+  workspaceId: string,
+  deltaUsd: number
+): Promise<void> {
+  if (deltaUsd === 0) return
+
+  const month = getCurrentMonth()
+  const keyCounter = `spend:key:${month}:${virtualKeyId}`
+  const wsCounter = `spend:ws:${month}:${workspaceId}`
+  const ttl = 35 * 24 * 60 * 60
+
+  const pipeline = dragonflyClient.pipeline()
+  pipeline.incrbyfloat(keyCounter, deltaUsd)
+  pipeline.incrbyfloat(wsCounter, deltaUsd)
+  pipeline.expire(keyCounter, ttl)
+  pipeline.expire(wsCounter, ttl)
+  await pipeline.exec()
+}
+
 export async function getCurrentSpend(
   virtualKeyId: string,
   workspaceId: string

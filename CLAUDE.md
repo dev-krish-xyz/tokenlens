@@ -34,7 +34,7 @@ tokenlens/
 After response: async log push to DragonflyDB queue (non-blocking)
 
 ## Cache key registry (DragonflyDB)
-- `vk:{virtualKeyId}` — resolved key context, TTL 300s
+- `vk:{virtualKeyId}` — resolved key context (provider key stored encrypted, decrypted per request), TTL 300s
 - `spend:key:{YYYYMM}:{virtualKeyId}` — monthly spend counter, TTL 35d
 - `spend:ws:{YYYYMM}:{workspaceId}` — workspace monthly spend, TTL 35d
 - `wscap:{workspaceId}` — workspace budget cap, TTL 300s
@@ -45,7 +45,7 @@ After response: async log push to DragonflyDB queue (non-blocking)
 Day 19 complete.
 Done: monorepo scaffold, docker-compose, Drizzle+ClickHouse schema, Zod env validation, GitHub Actions CI, Hono gateway with full middleware chain, OpenAI/Anthropic/Gemini providers, KeyVault, virtualKeyRepo (+ updateBudget), WorkspaceContext, proxyHandler, streamHandler, buildIngestionJob, BullMQ ingestionQueue, pricingRepo (cache→regex match), costCalculator (pure), ClickhouseWriter (buffer+flush 2s/200), ingestionProcessor, worker/src/index.ts (SIGTERM graceful shutdown), Better Auth (email+password+Google OAuth), workspaceRepo, auth pages (login/register), protected dashboard layout, WorkspaceProvider, tRPC v11 (protectedWorkspaceProcedure, cost router, virtualKey router), ClickHouse query service (getDailySpend/getTopModels/getSummaryStats), TRPCProvider in dashboard layout, /dashboard/keys page (create/list/delete with reveal dialog), DashboardNav sidebar, dashboard analytics UI (SummaryCards + DailySpendChart + TopModelsTable + URL-synced date range via nuqs).
 Working: 47 gateway / 23 shared / 5 worker tests passing, tsc clean on all packages.
-Broken/stubbed: budgetEnforcer (stub — needs INCRBYFLOAT logic). Run `bunx better-auth migrate` in web/ before first use to create ba_* tables.
+Broken/stubbed: none — budgetEnforcer now does atomic INCRBYFLOAT reserve-then-check (worker adjusts estimate to actual via adjustSpend). Gateway env TRUST_PROXY_HEADERS gates forwarding-header trust for rate limiting (default false). ClickHouse virtual_key_id stores hashVirtualKeyId() digest, never the raw tl-vk token. Provider-chain hardening: Gemini key sent via x-goog-api-key header (never URL; model URL-encoded), vk:* cache keeps provider key encrypted (decrypt per request), upstream error statuses map to generic 502 (429 passes through), mid-stream upstream error events replaced with generic SSE event. Run `bunx better-auth migrate` in web/ before first use to create ba_* tables.
 Shared subpath exports: @tokenlens/shared/keyVault, @tokenlens/shared/virtualKeyRepo, @tokenlens/shared/pricingRepo, @tokenlens/shared/clickhouse/writer, @tokenlens/shared/clickhouse/queries, @tokenlens/shared/queues/definitions, @tokenlens/shared/queues/types, @tokenlens/shared/workspaceRepo.
 Next session: request logs table (Developer View) — Day 20
 

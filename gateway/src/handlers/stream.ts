@@ -8,6 +8,20 @@ import { buildIngestionJob } from './ingestionJob.ts'
 
 type GatewayContext = Context<{ Variables: GatewayVariables }>
 
+// True only when a data line carries a top-level "error" key — an upstream
+// error event. Assistant content merely containing the word "error" parses to
+// a payload with "choices"/"candidates" at the top level and passes through.
+function hasUpstreamErrorEvent(chunk: string): boolean {
+  for (const line of chunk.split('\n')) {
+    if (!line.startsWith('data: ')) continue
+    try {
+      const data = JSON.parse(line.slice(6)) as Record<string, unknown>
+      if (data !== null && typeof data === 'object' && 'error' in data) return true
+    } catch {}
+  }
+  return false
+}
+
 export async function streamHandler(c: GatewayContext): Promise<Response> {
   const ctx = c.get('ctx')
   const body = c.get('body')
@@ -31,7 +45,10 @@ export async function streamHandler(c: GatewayContext): Promise<Response> {
 
   if (!providerRes.ok) {
     await providerRes.text()
-    throw new ProviderError(`Provider returned ${providerRes.status}`, providerRes.status)
+    // The upstream status describes the platform's provider account, not the
+    // client's virtual key — pass through only 429 (backoff signal), map the rest to 502.
+    console.error(`[stream] ${ctx.provider} upstream returned ${providerRes.status}`)
+    throw new ProviderError('Upstream provider request failed', providerRes.status === 429 ? 429 : 502)
   }
 
   const tokenUsage = { tokensIn: 0, tokensOut: 0 }
@@ -43,6 +60,12 @@ export async function streamHandler(c: GatewayContext): Promise<Response> {
       const { done, value } = await reader.read()
       if (done) break
       const chunk = decoder.decode(value)
+      if (chunk.includes('"error"') && hasUpstreamErrorEvent(chunk)) {
+        // Upstream error events carry quota/account detail about the platform's
+        // provider key — replace with a generic event and end the stream.
+        await s.write('data: {"error":{"message":"Upstream provider error","code":"PROVIDER_ERROR"}}\n\n')
+        break
+      }
       if (chunk.includes('"usage"')) {
         try {
           const lines = chunk.split('\n').filter((l) => l.startsWith('data: '))
@@ -68,7 +91,7 @@ export async function streamHandler(c: GatewayContext): Promise<Response> {
           body,
           { usage: { prompt_tokens: tokenUsage.tokensIn, completion_tokens: tokenUsage.tokensOut } },
           latencyMs,
-          200,
+          providerRes.status,
           c,
         ),
       )

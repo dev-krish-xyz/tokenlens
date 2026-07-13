@@ -7,6 +7,7 @@ import {
   ValidationError,
   ProviderError,
 } from '../../../packages/shared/src/errors'
+import { calculateCost } from '../../../packages/shared/src/services/costCalculator'
 import type { WorkspaceContext } from '../../../packages/shared/src/types'
 
 const mockIngestionAdd = mock(async (_name: string, _data: unknown) => ({} as never))
@@ -28,6 +29,7 @@ mock.module('@tokenlens/shared', () => ({
   RateLimitError,
   ValidationError,
   ProviderError,
+  calculateCost,
 }))
 
 mock.module('@tokenlens/shared/queues/definitions', () => ({
@@ -137,15 +139,34 @@ describe('proxyHandler', () => {
     expect(body.choices[0]?.message.content).toBe('hi')
   })
 
-  test('provider fetch returns 500 — ProviderError thrown, ingestionQueue NOT called', async () => {
+  test('provider fetch returns 500 — mapped to generic 502, ingestionQueue NOT called', async () => {
     globalThis.fetch = makeFetchMock(false, 500) as unknown as typeof fetch
 
     const res = await makeApp().request('/v1/chat/completions', { method: 'POST' })
 
-    expect(res.status).toBe(500)
-    const body = (await res.json()) as { code: string }
+    expect(res.status).toBe(502)
+    const body = (await res.json()) as { code: string; error: string }
     expect(body.code).toBe('PROVIDER_ERROR')
+    expect(body.error).toBe('Upstream provider request failed')
     expect(mockIngestionAdd.mock.calls).toHaveLength(0)
+  })
+
+  test('upstream 401 does NOT surface as 401 — client sees 502 without upstream status', async () => {
+    globalThis.fetch = makeFetchMock(false, 401) as unknown as typeof fetch
+
+    const res = await makeApp().request('/v1/chat/completions', { method: 'POST' })
+
+    expect(res.status).toBe(502)
+    const body = (await res.json()) as { error: string }
+    expect(body.error).not.toContain('401')
+  })
+
+  test('upstream 429 passes through as 429 for client backoff', async () => {
+    globalThis.fetch = makeFetchMock(false, 429) as unknown as typeof fetch
+
+    const res = await makeApp().request('/v1/chat/completions', { method: 'POST' })
+
+    expect(res.status).toBe(429)
   })
 
   test('ingestionQueue.add is fire-and-forget — response returns before add resolves', async () => {

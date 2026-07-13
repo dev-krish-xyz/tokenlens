@@ -7,7 +7,7 @@ import type { ModelPricing } from '../../../packages/shared/src/db/schema.ts'
 
 const mockFindByPattern = mock(async (_provider: string, _model: string): Promise<ModelPricing | null> => null)
 const mockAdd = mock((_row: RequestLogRow) => {})
-const mockIncrementSpend = mock(async (_keyId: string, _wsId: string, _cost: number) => {})
+const mockAdjustSpend = mock(async (_keyId: string, _wsId: string, _delta: number) => {})
 
 mock.module('@tokenlens/shared', () => ({
   calculateCost,
@@ -25,8 +25,13 @@ mock.module('@tokenlens/shared/clickhouse/writer', () => ({
 }))
 
 mock.module('@tokenlens/shared/services/budgetService', () => ({
-  incrementSpend: mockIncrementSpend,
+  adjustSpend: mockAdjustSpend,
   getCurrentSpend: mock(async () => ({ keySpend: 0, wsSpend: 0 })),
+}))
+
+// Deterministic stub — real impl loads shared env transitively
+mock.module('@tokenlens/shared/keyVault', () => ({
+  hashVirtualKeyId: (id: string) => `vkh_${id}`,
 }))
 
 const { processIngestionJob } = await import('./ingestionProcessor.ts')
@@ -66,6 +71,7 @@ function makeJob(overrides: Partial<IngestionJobData> = {}): Job<IngestionJobDat
 beforeEach(() => {
   mockFindByPattern.mockClear()
   mockAdd.mockClear()
+  mockAdjustSpend.mockClear()
   mockFindByPattern.mockImplementation(async () => BASE_PRICING)
 })
 
@@ -76,7 +82,7 @@ describe('processIngestionJob', () => {
     expect(mockAdd.mock.calls).toHaveLength(1)
     const row = mockAdd.mock.calls[0]?.[0] as RequestLogRow
     expect(row.workspace_id).toBe('ws-999')
-    expect(row.virtual_key_id).toBe('tl-vk-111')
+    expect(row.virtual_key_id).toBe('vkh_tl-vk-111')
     expect(row.provider).toBe('openai')
     expect(row.model).toBe('gpt-4o-mini')
     expect(row.user_id_tag).toBe('user-xyz')
@@ -106,5 +112,28 @@ describe('processIngestionJob', () => {
     expect('realApiKey' in row).toBe(false)
     const values = Object.values(row).map(String).join(' ')
     expect(values).not.toContain('sk-real')
+  })
+
+  test('spend adjusted by actual minus reserved estimate', async () => {
+    // actual cost = (1000/1M * 0.15) + (500/1M * 0.60) = 0.00045
+    await processIngestionJob(makeJob({ reservedCostUsd: 0.0005 }))
+
+    expect(mockAdjustSpend.mock.calls).toHaveLength(1)
+    const [keyId, wsId, delta] = mockAdjustSpend.mock.calls[0] ?? []
+    expect(keyId).toBe('tl-vk-111')
+    expect(wsId).toBe('ws-999')
+    expect(delta).toBeCloseTo(0.00045 - 0.0005, 8)
+  })
+
+  test('no reservation → full actual cost applied', async () => {
+    await processIngestionJob(makeJob())
+
+    const delta = mockAdjustSpend.mock.calls[0]?.[2]
+    expect(delta).toBeCloseTo(0.00045, 8)
+  })
+
+  test('spend counters keyed by RAW virtual key id, not the hash', async () => {
+    await processIngestionJob(makeJob())
+    expect(mockAdjustSpend.mock.calls[0]?.[0]).toBe('tl-vk-111')
   })
 })

@@ -1,4 +1,4 @@
-import { createCipheriv, createDecipheriv, randomBytes } from 'node:crypto'
+import { createCipheriv, createDecipheriv, createHash, randomBytes } from 'node:crypto'
 import { sharedEnv } from '../env.ts'
 import { AuthError } from '../errors.ts'
 
@@ -35,4 +35,14 @@ export function decrypt(ciphertext: string): string {
 
 export function generateVirtualKeyId(): string {
   return 'tl-vk-' + randomBytes(18).toString('hex')
+}
+
+/**
+ * One-way digest of a virtual key id for analytics storage.
+ * The virtual key id doubles as the bearer credential, so it must never be
+ * persisted in ClickHouse or shown in logs — store this hash instead.
+ * Deterministic, so per-key grouping in analytics still works.
+ */
+export function hashVirtualKeyId(id: string): string {
+  return 'vkh_' + createHash('sha256').update(id).digest('hex').slice(0, 32)
 }

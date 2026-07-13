@@ -8,19 +8,21 @@ import {
   ValidationError,
   ProviderError,
 } from '../../../packages/shared/src/errors'
+import { calculateCost } from '../../../packages/shared/src/services/costCalculator'
 import type { WorkspaceContext } from '../../../packages/shared/src/types'
+import type { ModelPricing } from '../../../packages/shared/src/db/schema'
 
 const mockGetBudgetCap = mock(async (_wsId: string): Promise<number | null> => null)
-const mockGetRemainingBudget = mock(
+const mockReserveSpend = mock(
   async (
     _keyId: string,
     _wsId: string,
-    _keyCap: number | null,
-    _wsCap: number | null
-  ): Promise<{ keyRemaining: number | null; wsRemaining: number | null }> => ({
-    keyRemaining: null,
-    wsRemaining: null,
-  })
+    _costUsd: number
+  ): Promise<{ keySpend: number; wsSpend: number }> => ({ keySpend: 0, wsSpend: 0 })
+)
+const mockReleaseSpend = mock(async (_keyId: string, _wsId: string, _costUsd: number) => {})
+const mockFindByPattern = mock(
+  async (_provider: string, _model: string): Promise<ModelPricing | null> => null
 )
 
 mock.module('@tokenlens/shared', () => ({
@@ -35,6 +37,7 @@ mock.module('@tokenlens/shared', () => ({
       exec: mock(async () => []),
     }),
   },
+  calculateCost,
   BudgetExceededError,
   AppError,
   AuthError,
@@ -48,7 +51,12 @@ mock.module('@tokenlens/shared/workspaceRepo', () => ({
 }))
 
 mock.module('@tokenlens/shared/services/budgetService', () => ({
-  getRemainingBudget: mockGetRemainingBudget,
+  reserveSpend: mockReserveSpend,
+  releaseSpend: mockReleaseSpend,
+}))
+
+mock.module('@tokenlens/shared/pricingRepo', () => ({
+  findByPattern: mockFindByPattern,
 }))
 
 const { budgetEnforcer } = await import('./budgetEnforcer.ts')
@@ -61,7 +69,23 @@ const BASE_CTX: WorkspaceContext = {
   budgetCap: null,
 }
 
-function makeApp(ctx: Partial<WorkspaceContext> = {}) {
+const BASE_BODY = {
+  model: 'gpt-4o',
+  messages: [{ role: 'user' as const, content: 'hi' }],
+}
+
+// input: $10/M, output: $30/M — with 1-char message (1 est token in) and the
+// 1024-token default output estimate: est ≈ 0.00001 + 0.03072 ≈ $0.03073
+const PRICING: ModelPricing = {
+  id: 'price-1',
+  provider: 'openai',
+  model_pattern: 'gpt-4o',
+  input_price_per_m: '10',
+  output_price_per_m: '30',
+  updated_at: new Date(),
+} as ModelPricing
+
+function makeApp(ctx: Partial<WorkspaceContext> = {}, handlerThrows = false) {
   const app = new Hono<{ Variables: Record<string, unknown> }>()
   app.onError((err, c) => {
     if (err instanceof AppError) {
@@ -71,82 +95,108 @@ function makeApp(ctx: Partial<WorkspaceContext> = {}) {
   })
   app.use('*', (c, next) => {
     c.set('ctx', { ...BASE_CTX, ...ctx })
+    c.set('body', BASE_BODY)
     return next()
   })
   app.use('*', budgetEnforcer)
-  app.get('/test', (c) => c.json({ ok: true }))
+  app.get('/test', (c) => {
+    if (handlerThrows) throw new ProviderError('Provider returned 500', 502)
+    return c.json({ ok: true, reservedCostUsd: c.get('reservedCostUsd') })
+  })
   return app
 }
 
 beforeEach(() => {
   mockGetBudgetCap.mockClear()
-  mockGetRemainingBudget.mockClear()
+  mockReserveSpend.mockClear()
+  mockReleaseSpend.mockClear()
+  mockFindByPattern.mockClear()
   mockGetBudgetCap.mockImplementation(async () => null)
-  mockGetRemainingBudget.mockImplementation(async () => ({ keyRemaining: null, wsRemaining: null }))
+  mockReserveSpend.mockImplementation(async () => ({ keySpend: 0, wsSpend: 0 }))
+  mockFindByPattern.mockImplementation(async () => PRICING)
 })
 
 describe('fast path — no caps', () => {
-  test('ctx.budgetCap=null, wsCap=null → next() called, getRemainingBudget NOT called', async () => {
+  test('ctx.budgetCap=null, wsCap=null → next() called, reserveSpend NOT called', async () => {
     const res = await makeApp({ budgetCap: null }).request('/test')
     expect(res.status).toBe(200)
-    expect(mockGetRemainingBudget.mock.calls).toHaveLength(0)
+    expect(mockReserveSpend.mock.calls).toHaveLength(0)
+    expect(mockFindByPattern.mock.calls).toHaveLength(0)
   })
 })
 
-describe('key cap enforcement', () => {
-  test('keyRemaining=0.00 → 429 BudgetExceededError', async () => {
-    mockGetBudgetCap.mockImplementation(async () => null)
-    mockGetRemainingBudget.mockImplementation(async () => ({ keyRemaining: 0, wsRemaining: null }))
+describe('atomic reserve-then-check', () => {
+  test('reserveSpend called with estimated cost > 0 when pricing known', async () => {
+    await makeApp({ budgetCap: 10 }).request('/test')
+    expect(mockReserveSpend.mock.calls).toHaveLength(1)
+    const est = mockReserveSpend.mock.calls[0]?.[2] as number
+    expect(est).toBeGreaterThan(0)
+    expect(est).toBeCloseTo(0.03073, 4)
+  })
+
+  test('post-reserve total under cap → 200, reservation kept (no release), reservedCostUsd set', async () => {
+    mockReserveSpend.mockImplementation(async () => ({ keySpend: 5, wsSpend: 0 }))
+    const res = await makeApp({ budgetCap: 10 }).request('/test')
+    expect(res.status).toBe(200)
+    expect(mockReleaseSpend.mock.calls).toHaveLength(0)
+    const body = (await res.json()) as { reservedCostUsd: number }
+    expect(body.reservedCostUsd).toBeGreaterThan(0)
+  })
+
+  test('post-reserve total over key cap → 429 and reservation refunded', async () => {
+    mockReserveSpend.mockImplementation(async () => ({ keySpend: 10.5, wsSpend: 0 }))
     const res = await makeApp({ budgetCap: 10 }).request('/test')
     expect(res.status).toBe(429)
     const body = (await res.json()) as { code: string }
     expect(body.code).toBe('BUDGET_EXCEEDED')
+    expect(mockReleaseSpend.mock.calls).toHaveLength(1)
+    // refund amount must equal the reserved amount
+    expect(mockReleaseSpend.mock.calls[0]?.[2]).toBe(mockReserveSpend.mock.calls[0]?.[2])
   })
 
-  test('keyRemaining=-0.50 → 429 (already over budget)', async () => {
-    mockGetBudgetCap.mockImplementation(async () => null)
-    mockGetRemainingBudget.mockImplementation(async () => ({ keyRemaining: -0.5, wsRemaining: null }))
+  test('unknown pricing → estimate 0, spend at exactly cap still allowed through', async () => {
+    mockFindByPattern.mockImplementation(async () => null)
+    mockReserveSpend.mockImplementation(async () => ({ keySpend: 10, wsSpend: 0 }))
+    const res = await makeApp({ budgetCap: 10 }).request('/test')
+    expect(res.status).toBe(200)
+  })
+
+  test('spend just over cap → 429', async () => {
+    mockFindByPattern.mockImplementation(async () => null)
+    mockReserveSpend.mockImplementation(async () => ({ keySpend: 10.0001, wsSpend: 0 }))
     const res = await makeApp({ budgetCap: 10 }).request('/test')
     expect(res.status).toBe(429)
-  })
-
-  test('keyRemaining=0.001 → 200 (just under cap)', async () => {
-    mockGetBudgetCap.mockImplementation(async () => null)
-    mockGetRemainingBudget.mockImplementation(async () => ({ keyRemaining: 0.001, wsRemaining: null }))
-    const res = await makeApp({ budgetCap: 10 }).request('/test')
-    expect(res.status).toBe(200)
-  })
-
-  test('keyRemaining=5.00 → 200', async () => {
-    mockGetBudgetCap.mockImplementation(async () => null)
-    mockGetRemainingBudget.mockImplementation(async () => ({ keyRemaining: 5, wsRemaining: null }))
-    const res = await makeApp({ budgetCap: 10 }).request('/test')
-    expect(res.status).toBe(200)
   })
 })
 
 describe('workspace cap enforcement', () => {
-  test('wsRemaining=0.00, keyRemaining=5.00 → 429 (ws cap triggers even with key budget remaining)', async () => {
+  test('ws total over wsCap → 429 even with key budget remaining', async () => {
     mockGetBudgetCap.mockImplementation(async () => 50)
-    mockGetRemainingBudget.mockImplementation(async () => ({ keyRemaining: 5, wsRemaining: 0 }))
+    mockReserveSpend.mockImplementation(async () => ({ keySpend: 5, wsSpend: 51 }))
     const res = await makeApp({ budgetCap: 10 }).request('/test')
     expect(res.status).toBe(429)
-    const body = (await res.json()) as { code: string }
+    const body = (await res.json()) as { code: string; error: string }
     expect(body.code).toBe('BUDGET_EXCEEDED')
+    expect(body.error).toContain('Workspace')
+    expect(mockReleaseSpend.mock.calls).toHaveLength(1)
   })
 
-  test('wsRemaining=-1.00 → 429', async () => {
+  test('only wsCap set (key cap null) → enforced against ws total', async () => {
     mockGetBudgetCap.mockImplementation(async () => 50)
-    mockGetRemainingBudget.mockImplementation(async () => ({ keyRemaining: null, wsRemaining: -1 }))
+    mockReserveSpend.mockImplementation(async () => ({ keySpend: 60, wsSpend: 49 }))
     const res = await makeApp({ budgetCap: null }).request('/test')
-    expect(res.status).toBe(429)
-  })
-
-  test('wsRemaining=null (no ws cap), keyRemaining=5.00 → 200', async () => {
-    mockGetBudgetCap.mockImplementation(async () => null)
-    mockGetRemainingBudget.mockImplementation(async () => ({ keyRemaining: 5, wsRemaining: null }))
-    const res = await makeApp({ budgetCap: 10 }).request('/test')
+    // keySpend high but no key cap → only wsCap matters, and ws is under
     expect(res.status).toBe(200)
+  })
+})
+
+describe('refund on downstream failure', () => {
+  test('provider handler throws → reservation released, error propagates', async () => {
+    mockReserveSpend.mockImplementation(async () => ({ keySpend: 1, wsSpend: 0 }))
+    const res = await makeApp({ budgetCap: 10 }, true).request('/test')
+    expect(res.status).toBe(502)
+    expect(mockReleaseSpend.mock.calls).toHaveLength(1)
+    expect(mockReleaseSpend.mock.calls[0]?.[2]).toBe(mockReserveSpend.mock.calls[0]?.[2])
   })
 })
 
@@ -158,22 +208,10 @@ describe('error shape', () => {
   })
 
   test('error message contains Cap: with dollar amount', async () => {
-    mockGetBudgetCap.mockImplementation(async () => null)
-    mockGetRemainingBudget.mockImplementation(async () => ({ keyRemaining: -0.5, wsRemaining: null }))
+    mockReserveSpend.mockImplementation(async () => ({ keySpend: 11, wsSpend: 0 }))
     const res = await makeApp({ budgetCap: 10 }).request('/test')
     const body = (await res.json()) as { error: string }
     expect(body.error).toContain('Cap:')
     expect(body.error).toContain('$')
-  })
-})
-
-describe('fast path timing', () => {
-  test('no caps → getRemainingBudget not called (spend read skipped)', async () => {
-    const start = performance.now()
-    const res = await makeApp({ budgetCap: null }).request('/test')
-    const elapsed = performance.now() - start
-    expect(res.status).toBe(200)
-    expect(mockGetRemainingBudget.mock.calls).toHaveLength(0)
-    expect(elapsed).toBeLessThan(5)
   })
 })

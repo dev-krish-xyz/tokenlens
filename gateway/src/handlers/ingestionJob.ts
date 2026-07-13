@@ -28,5 +28,6 @@ export function buildIngestionJob(
     latencyMs,
     statusCode,
     createdAt: new Date().toISOString(),
+    reservedCostUsd: c.get('reservedCostUsd'),
   }
 }

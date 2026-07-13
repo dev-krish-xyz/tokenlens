@@ -1,23 +1,28 @@
 import { describe, test, expect, mock } from 'bun:test';
 import { Hono } from 'hono';
 // Import error classes directly from source — avoids triggering shared/src/env.ts
-import { AppError, RateLimitError, ValidationError, AuthError, ProviderError } from '../../../packages/shared/src/errors';
+import { AppError, RateLimitError, ValidationError, AuthError, ProviderError, BudgetExceededError } from '../../../packages/shared/src/errors';
+import { calculateCost } from '../../../packages/shared/src/services/costCalculator';
 
 type AppVariables = { requestId: string | undefined };
 
 // Build a mock pipeline whose exec returns a configurable ZCARD result
-function makePipeline(count: number) {
+function makePipeline(count: number | null) {
   return {
-    zremrangebyscore: mock(() => pipeline),
-    zadd: mock(() => pipeline),
+    zremrangebyscore: mock((_key: string, _min: number, _max: number) => pipeline),
+    zadd: mock((_key: string, _score: number, _member: string) => pipeline),
     expire: mock(() => pipeline),
     zcard: mock(() => pipeline),
-    exec: mock(async () => [
-      [null, 1],
-      [null, 1],
-      [null, 1],
-      [null, count],
-    ]),
+    exec: mock(async () =>
+      count === null
+        ? []
+        : [
+            [null, 1],
+            [null, 1],
+            [null, 1],
+            [null, count],
+          ],
+    ),
   };
 }
 let pipeline = makePipeline(1);
@@ -29,17 +34,24 @@ mock.module('@tokenlens/shared', () => ({
     get: mock(async () => null),
     setex: mock(async () => 'OK' as const),
   },
+  calculateCost,
   RateLimitError,
   AppError,
   ValidationError,
   AuthError,
   ProviderError,
+  BudgetExceededError,
+}));
+
+// Mock gateway env so TRUST_PROXY_HEADERS is predictable in tests
+mock.module('../env.ts', () => ({
+  env: { PORT: 8787, GATEWAY_ENV: 'dev' as const, TRUST_PROXY_HEADERS: false },
 }));
 
 const { rateLimiter } = await import('./rateLimiter.ts');
 const { requestIdMiddleware } = await import('./requestId.ts');
 
-function makeApp(count: number) {
+function makeApp(count: number | null) {
   pipeline = makePipeline(count);
 
   const app = new Hono<{ Variables: AppVariables }>();
@@ -70,6 +82,35 @@ describe('rateLimiter', () => {
     expect(res.status).toBe(429);
     const body = (await res.json()) as { code: string };
     expect(body.code).toBe('RATE_LIMITED');
+  });
+
+  test('X-Forwarded-For ignored when TRUST_PROXY_HEADERS=false — spoofed IP does not change bucket', async () => {
+    const app = makeApp(1);
+    await app.request('/health', { headers: { 'X-Forwarded-For': '1.2.3.4' } });
+    const key = pipeline.zremrangebyscore.mock.calls[0]?.[0];
+    // no real socket in app.request(), so untrusted-headers path falls back to 'unknown'
+    expect(key).toBe('rl:unknown');
+  });
+
+  test('CF-Connecting-IP ignored when TRUST_PROXY_HEADERS=false', async () => {
+    const app = makeApp(1);
+    await app.request('/health', { headers: { 'CF-Connecting-IP': '9.9.9.9' } });
+    const key = pipeline.zremrangebyscore.mock.calls[0]?.[0];
+    expect(key).toBe('rl:unknown');
+  });
+
+  test('zset member is unique per request (timestamp:requestId)', async () => {
+    const app = makeApp(1);
+    await app.request('/health');
+    const member = pipeline.zadd.mock.calls[0]?.[2];
+    expect(typeof member).toBe('string');
+    // "<ms>:<21-char nanoid>"
+    expect(member).toMatch(/^\d+:.{21}$/);
+  });
+
+  test('pipeline failure — fails open (request allowed) instead of crashing', async () => {
+    const res = await makeApp(null).request('/health');
+    expect(res.status).toBe(200);
   });
 });
 

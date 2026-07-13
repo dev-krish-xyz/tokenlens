@@ -8,6 +8,7 @@ import {
   ProviderError,
   BudgetExceededError,
 } from '../../../packages/shared/src/errors'
+import { calculateCost } from '../../../packages/shared/src/services/costCalculator'
 import type { WorkspaceContext } from '../../../packages/shared/src/types'
 
 const mockGetPlanTier = mock(async (_wsId: string): Promise<'free' | 'pro' | 'enterprise'> => 'free')
@@ -21,6 +22,7 @@ mock.module('@tokenlens/shared', () => ({
   ValidationError,
   ProviderError,
   BudgetExceededError,
+  calculateCost,
 }))
 
 mock.module('@tokenlens/shared/services/planService', () => ({

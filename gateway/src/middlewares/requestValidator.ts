@@ -3,28 +3,29 @@ import { z } from 'zod'
 import { ValidationError } from '@tokenlens/shared'
 import { env } from '../env.ts'
 
-const SSRF_PATTERNS = [
-  '169.254.169.254',
-  '10.',
-  '192.168.',
-  'localhost',
-  '127.0.0.1',
-] as const
+// URL-overriding fields are rejected structurally rather than by scanning the
+// raw body for IP substrings — substring scans false-positive on message
+// content ("call me at 10.30") while missing encoded addresses. No
+// user-controlled value is ever used as a URL: the schema is strict and the
+// provider URL is built from DB-sourced config only.
+const FORBIDDEN_KEYS = ['base_url', 'api_base', 'baseURL', 'azure_endpoint'] as const
 
-const bodySchema = z.object({
-  model: z.string().min(1),
-  messages: z
-    .array(
-      z.object({
-        role: z.enum(['user', 'assistant', 'system']),
-        content: z.string(),
-      }),
-    )
-    .min(1),
-  stream: z.boolean().optional(),
-  max_tokens: z.number().int().positive().optional(),
-  temperature: z.number().min(0).max(2).optional(),
-})
+const bodySchema = z
+  .object({
+    model: z.string().min(1),
+    messages: z
+      .array(
+        z.object({
+          role: z.enum(['user', 'assistant', 'system']),
+          content: z.string(),
+        }),
+      )
+      .min(1),
+    stream: z.boolean().optional(),
+    max_tokens: z.number().int().positive().optional(),
+    temperature: z.number().min(0).max(2).optional(),
+  })
+  .strict()
 
 interface TLConfig {
   featureTag?: string
@@ -35,21 +36,19 @@ interface TLConfig {
 export const requestValidator: MiddlewareHandler = async (c, next) => {
   const rawBody = await c.req.text()
 
-  // SSRF guard — must run before Zod parse so user-controlled strings are blocked early
-  if (rawBody.includes('base_url')) {
-    throw new ValidationError('Custom base_url not allowed')
-  }
-  for (const pattern of SSRF_PATTERNS) {
-    if (rawBody.includes(pattern)) {
-      throw new ValidationError('SSRF: internal addresses not allowed')
-    }
-  }
-
   let parsed: unknown
   try {
     parsed = JSON.parse(rawBody)
   } catch {
     throw new ValidationError('Invalid JSON body')
+  }
+
+  if (parsed !== null && typeof parsed === 'object') {
+    for (const key of FORBIDDEN_KEYS) {
+      if (key in parsed) {
+        throw new ValidationError(`Custom ${key} not allowed`)
+      }
+    }
   }
 
   const result = bodySchema.safeParse(parsed)

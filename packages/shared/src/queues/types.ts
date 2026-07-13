@@ -12,6 +12,8 @@ export interface IngestionJobData {
   latencyMs: number
   statusCode: number
   createdAt: string
+  /** Estimated cost already reserved by budgetEnforcer; worker adjusts to actual. */
+  reservedCostUsd?: number | undefined
 }
 
 export interface AlertJobData {

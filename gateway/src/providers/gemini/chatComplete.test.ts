@@ -1,5 +1,6 @@
 import { describe, test, expect } from 'bun:test'
 import { transformRequest, transformResponse } from './chatComplete.ts'
+import { buildUrl, buildHeaders } from './api.ts'
 import { providerRegistry } from '../index.ts'
 
 describe('gemini transformRequest', () => {
@@ -52,6 +53,29 @@ describe('gemini transformResponse', () => {
     expect(result.usage.prompt_tokens).toBe(10)
     expect(result.usage.completion_tokens).toBe(5)
     expect(result.usage.total_tokens).toBe(15)
+  })
+})
+
+describe('gemini api', () => {
+  test('buildUrl never embeds the API key', () => {
+    const url = buildUrl('gemini-2.0-flash', 'AIza-secret-key')
+    expect(url).not.toContain('AIza-secret-key')
+    expect(url).not.toContain('key=')
+    expect(url).toBe(
+      'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent',
+    )
+  })
+
+  test('buildHeaders carries the key via x-goog-api-key', () => {
+    const headers = buildHeaders('AIza-secret-key')
+    expect(headers['x-goog-api-key']).toBe('AIza-secret-key')
+  })
+
+  test('buildUrl URL-encodes user-supplied model (no path/query injection)', () => {
+    const url = buildUrl('evil:generateContent?key=attacker&x=', 'AIza-secret-key')
+    expect(url).not.toContain('?')
+    expect(url).not.toContain('&')
+    expect(url).toContain(encodeURIComponent('evil:generateContent?key=attacker&x='))
   })
 })
 

@@ -5,7 +5,7 @@ type AnyRow = Record<string, unknown>
 // Pipeline mock — shared across tests, reset in beforeEach
 const mockPipelineIncrbyfloat = mock((_key: string, _val: number) => {})
 const mockPipelineExpire = mock((_key: string, _ttl: number) => {})
-const mockPipelineExec = mock(async () => [])
+const mockPipelineExec = mock(async (): Promise<Array<[Error | null, unknown]>> => [])
 const mockPipeline = {
   incrbyfloat: mockPipelineIncrbyfloat,
   expire: mockPipelineExpire,
@@ -61,7 +61,8 @@ const mockDb = {
 
 mock.module('../db/client.ts', () => ({ db: mockDb }))
 
-const { incrementSpend, getCurrentSpend, getRemainingBudget } = await import('./budgetService.ts')
+const { incrementSpend, getCurrentSpend, getRemainingBudget, reserveSpend, releaseSpend, adjustSpend } =
+  await import('./budgetService.ts')
 const { getBudgetCap } = await import('../db/repositories/workspaceRepo.ts')
 
 function currentMonth(): string {
@@ -80,6 +81,7 @@ beforeEach(() => {
   mockDragonflySetex.mockClear()
   mockDragonflyDel.mockClear()
   mockDbSelect.mockClear()
+  mockPipelineExec.mockImplementation(async () => [])
 })
 
 describe('incrementSpend', () => {
@@ -112,6 +114,72 @@ describe('incrementSpend', () => {
     const calls = mockPipelineExpire.mock.calls
     expect(calls[0]?.[1]).toBe(ttl)
     expect(calls[1]?.[1]).toBe(ttl)
+  })
+})
+
+describe('reserveSpend', () => {
+  test('increments both counters and returns post-increment totals', async () => {
+    const month = currentMonth()
+    mockPipelineExec.mockImplementation(async () => [
+      [null, '5.50'],
+      [null, '12.25'],
+      [null, 1],
+      [null, 1],
+    ])
+    const result = await reserveSpend('vk-1', 'ws-1', 0.03)
+    expect(mockPipelineIncrbyfloat).toHaveBeenCalledWith(`spend:key:${month}:vk-1`, 0.03)
+    expect(mockPipelineIncrbyfloat).toHaveBeenCalledWith(`spend:ws:${month}:ws-1`, 0.03)
+    expect(result.keySpend).toBeCloseTo(5.5, 8)
+    expect(result.wsSpend).toBeCloseTo(12.25, 8)
+  })
+
+  test('zero estimate still returns totals (counters read atomically)', async () => {
+    mockPipelineExec.mockImplementation(async () => [
+      [null, '10'],
+      [null, '10'],
+      [null, 1],
+      [null, 1],
+    ])
+    const result = await reserveSpend('vk-1', 'ws-1', 0)
+    expect(result).toEqual({ keySpend: 10, wsSpend: 10 })
+  })
+
+  test('pipeline failure → totals default to 0 (fail-open)', async () => {
+    const result = await reserveSpend('vk-1', 'ws-1', 0.5)
+    expect(result).toEqual({ keySpend: 0, wsSpend: 0 })
+  })
+})
+
+describe('releaseSpend', () => {
+  test('decrements both counters by the reserved amount', async () => {
+    const month = currentMonth()
+    await releaseSpend('vk-1', 'ws-1', 0.03)
+    expect(mockPipelineIncrbyfloat).toHaveBeenCalledWith(`spend:key:${month}:vk-1`, -0.03)
+    expect(mockPipelineIncrbyfloat).toHaveBeenCalledWith(`spend:ws:${month}:ws-1`, -0.03)
+  })
+
+  test('costUsd = 0 → pipeline NOT called', async () => {
+    await releaseSpend('vk-1', 'ws-1', 0)
+    expect(mockDragonflyPipeline).not.toHaveBeenCalled()
+  })
+})
+
+describe('adjustSpend', () => {
+  test('positive delta (actual > estimate) increments counters', async () => {
+    const month = currentMonth()
+    await adjustSpend('vk-1', 'ws-1', 0.002)
+    expect(mockPipelineIncrbyfloat).toHaveBeenCalledWith(`spend:key:${month}:vk-1`, 0.002)
+  })
+
+  test('negative delta (actual < estimate) decrements counters', async () => {
+    const month = currentMonth()
+    await adjustSpend('vk-1', 'ws-1', -0.015)
+    expect(mockPipelineIncrbyfloat).toHaveBeenCalledWith(`spend:ws:${month}:ws-1`, -0.015)
+  })
+
+  test('delta = 0 → pipeline NOT called', async () => {
+    await adjustSpend('vk-1', 'ws-1', 0)
+    expect(mockDragonflyPipeline).not.toHaveBeenCalled()
   })
 })
 

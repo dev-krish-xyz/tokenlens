@@ -1,6 +1,7 @@
 import { describe, test, expect, mock, beforeEach } from 'bun:test'
 import { Hono } from 'hono'
-import { AuthError, AppError, RateLimitError, ValidationError, ProviderError } from '../../../packages/shared/src/errors'
+import { AuthError, AppError, RateLimitError, ValidationError, ProviderError, BudgetExceededError } from '../../../packages/shared/src/errors'
+import { calculateCost } from '../../../packages/shared/src/services/costCalculator'
 
 let _cacheData: Record<string, string> = {}
 let _dbRow: Record<string, unknown> | null = null
@@ -22,6 +23,8 @@ mock.module('@tokenlens/shared', () => ({
   RateLimitError,
   ValidationError,
   ProviderError,
+  BudgetExceededError,
+  calculateCost,
 }))
 
 mock.module('@tokenlens/shared/keyVault', () => ({ decrypt: mockDecrypt }))
@@ -69,7 +72,7 @@ describe('cache hit path', () => {
     const cached = {
       workspaceId: 'ws-cached',
       virtualKeyId: 'tl-vk-aabbccdd1122334455667788',
-      realApiKey: 'sk-cached',
+      encryptedKey: 'enc-cached',
       provider: 'openai',
       budgetCap: null,
     }
@@ -81,8 +84,45 @@ describe('cache hit path', () => {
     })
     expect(res.status).toBe(200)
     expect(mockFindById.mock.calls).toHaveLength(0)
-    const body = (await res.json()) as { ctx: { workspaceId: string } }
+    const body = (await res.json()) as { ctx: { workspaceId: string; realApiKey: string } }
     expect(body.ctx.workspaceId).toBe('ws-cached')
+  })
+
+  test('cache hit decrypts encryptedKey per request', async () => {
+    _cacheData['vk:tl-vk-aabbccdd1122334455667788'] = JSON.stringify({
+      workspaceId: 'ws-cached',
+      virtualKeyId: 'tl-vk-aabbccdd1122334455667788',
+      encryptedKey: 'enc-cached',
+      provider: 'openai',
+      budgetCap: null,
+    })
+
+    const res = await makeApp().request('/test', {
+      method: 'POST',
+      headers: { Authorization: BEARER },
+    })
+    expect(mockDecrypt).toHaveBeenCalledWith('enc-cached')
+    const body = (await res.json()) as { ctx: { realApiKey: string } }
+    expect(body.ctx.realApiKey).toBe('sk-real-api-key-value')
+  })
+
+  test('legacy cache shape without encryptedKey falls through to DB and rewrites entry', async () => {
+    _cacheData['vk:tl-vk-aabbccdd1122334455667788'] = JSON.stringify({
+      workspaceId: 'ws-stale',
+      virtualKeyId: 'tl-vk-aabbccdd1122334455667788',
+      realApiKey: 'sk-plaintext-legacy',
+      provider: 'openai',
+      budgetCap: null,
+    })
+    _dbRow = BASE_KEY
+
+    const res = await makeApp().request('/test', {
+      method: 'POST',
+      headers: { Authorization: BEARER },
+    })
+    expect(res.status).toBe(200)
+    expect(mockFindById.mock.calls).toHaveLength(1)
+    expect(mockDragonflySetex.mock.calls).toHaveLength(1)
   })
 })
 
@@ -99,6 +139,19 @@ describe('cache miss path', () => {
     expect(mockDragonflySetex.mock.calls).toHaveLength(1)
     const call = mockDragonflySetex.mock.calls[0] as [string, number, string]
     expect(call[1]).toBe(300)
+  })
+
+  test('cached payload stores encrypted key, never decrypted plaintext', async () => {
+    _dbRow = BASE_KEY
+
+    await makeApp().request('/test', {
+      method: 'POST',
+      headers: { Authorization: BEARER },
+    })
+    const payload = (mockDragonflySetex.mock.calls[0] as [string, number, string])[2]
+    expect(payload).toContain('enc-data-here')
+    expect(payload).not.toContain('sk-real-api-key-value')
+    expect(payload).not.toContain('realApiKey')
   })
 
   test('ctx.provider matches key.provider', async () => {

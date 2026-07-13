@@ -2,7 +2,8 @@ import type { Job } from 'bullmq'
 import { findByPattern } from '@tokenlens/shared/pricingRepo'
 import { calculateCost } from '@tokenlens/shared'
 import { clickhouseWriter } from '@tokenlens/shared/clickhouse/writer'
-import { incrementSpend } from '@tokenlens/shared/services/budgetService'
+import { adjustSpend } from '@tokenlens/shared/services/budgetService'
+import { hashVirtualKeyId } from '@tokenlens/shared/keyVault'
 import type { IngestionJobData } from '@tokenlens/shared/queues/types'
 
 export async function processIngestionJob(job: Job<IngestionJobData>): Promise<void> {
@@ -14,7 +15,9 @@ export async function processIngestionJob(job: Job<IngestionJobData>): Promise<v
   clickhouseWriter.add({
     request_id: job.data.requestId ?? '',
     workspace_id: job.data.workspaceId,
-    virtual_key_id: job.data.virtualKeyId,
+    // The virtual key id doubles as the bearer credential — store a hash so
+    // ClickHouse rows never contain the secret while grouping still works.
+    virtual_key_id: hashVirtualKeyId(job.data.virtualKeyId),
     provider: job.data.provider,
     model: job.data.model,
     env_tag: job.data.envTag,
@@ -29,8 +32,10 @@ export async function processIngestionJob(job: Job<IngestionJobData>): Promise<v
   })
 
   try {
-    await incrementSpend(job.data.virtualKeyId, job.data.workspaceId, costUsd)
+    // budgetEnforcer already reserved an estimate; converge to the actual cost.
+    const reserved = job.data.reservedCostUsd ?? 0
+    await adjustSpend(job.data.virtualKeyId, job.data.workspaceId, costUsd - reserved)
   } catch (err) {
-    console.error('[ingestionProcessor] incrementSpend failed (non-fatal):', err)
+    console.error('[ingestionProcessor] adjustSpend failed (non-fatal):', err)
   }
 }

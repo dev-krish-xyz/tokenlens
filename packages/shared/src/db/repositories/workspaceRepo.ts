@@ -1,4 +1,4 @@
-import { eq, type InferInsertModel } from 'drizzle-orm'
+import { eq, asc, type InferInsertModel } from 'drizzle-orm'
 import { db } from '../client.ts'
 import { dragonflyClient } from '../../dragonfly/client.ts'
 import { workspaces, workspace_members, users } from '../schema.ts'
@@ -29,6 +29,9 @@ export async function findByUserId(userId: string): Promise<Workspace | null> {
     .from(workspace_members)
     .innerJoin(workspaces, eq(workspace_members.workspace_id, workspaces.id))
     .where(eq(workspace_members.user_id, userId))
+    // Users can belong to several workspaces (own + invited) — without an
+    // explicit order the session would bind to an arbitrary one.
+    .orderBy(asc(workspace_members.created_at))
     .limit(1)
   return rows[0]?.workspace ?? null
 }

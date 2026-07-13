@@ -264,6 +264,14 @@ export default async function InvitePage({
     )
   }
 
+  // The token alone must not grant membership — the invite was addressed to a
+  // specific email, so the logged-in account has to match it.
+  if (session.user.email.toLowerCase() !== invite.email.toLowerCase()) {
+    return (
+      <InviteErrorPage message="This invite was sent to a different email address. Log in with the invited account to accept it." />
+    )
+  }
+
   try {
     await accept(token, session.user.id)
   } catch {

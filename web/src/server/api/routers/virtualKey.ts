@@ -45,7 +45,7 @@ export const virtualKeyRouter = router({
       return { success: true as const }
     }),
 
-  updateBudget: protectedWorkspaceProcedure
+  updateBudget: protectedMemberProcedure
     .input(
       z.object({
         id: z.string(),

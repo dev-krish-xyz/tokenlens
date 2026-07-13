@@ -1,6 +1,16 @@
 import { env } from '../env.ts'
 import type { WorkspaceRole } from '@tokenlens/shared'
 
+// inviterName and workspaceName are user-controlled — escape them so a crafted
+// profile or workspace name can't inject markup into email sent from our domain.
+function escapeHtml(s: string): string {
+  return s
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+}
+
 function buildInviteEmailHtml(opts: {
   inviterName: string
   workspaceName: string
@@ -12,8 +22,8 @@ function buildInviteEmailHtml(opts: {
 <body style="font-family: sans-serif; max-width: 480px; margin: 40px auto; color: #111;">
   <h2 style="font-size: 20px; margin-bottom: 8px;">You've been invited</h2>
   <p style="color: #555; margin-bottom: 24px;">
-    <strong>${opts.inviterName}</strong> invited you to join
-    <strong>${opts.workspaceName}</strong> on TokenLens as <strong>${opts.role}</strong>.
+    <strong>${escapeHtml(opts.inviterName)}</strong> invited you to join
+    <strong>${escapeHtml(opts.workspaceName)}</strong> on TokenLens as <strong>${opts.role}</strong>.
   </p>
   <a href="${opts.inviteUrl}"
      style="display: inline-block; background: #4f46e5; color: #fff; padding: 12px 24px;

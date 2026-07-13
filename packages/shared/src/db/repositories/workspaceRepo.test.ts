@@ -26,6 +26,9 @@ function makeSelectChain(rows: AnyRow[]) {
     from: (_t: unknown) => ({
       innerJoin: (_t2: unknown, _on: unknown) => ({
         where: (_cond: unknown) => ({
+          orderBy: (_order: unknown) => ({
+            limit: (_n: number) => Promise.resolve([...rows]),
+          }),
           limit: (_n: number) => Promise.resolve([...rows]),
         }),
       }),

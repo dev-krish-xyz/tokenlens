@@ -13,10 +13,10 @@ const MIDDLEWARE = [
 
 function KpiCard({ label, value, delta, deltaColor }: { label: string; value: React.ReactNode; delta?: string; deltaColor?: string }) {
   return (
-    <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, padding: '16px 18px' }}>
-      <div style={{ fontSize: 11, color: 'var(--t3)', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6 }}>{label}</div>
-      <div style={{ fontSize: 20, fontWeight: 600, fontFamily: 'monospace', marginBottom: 3 }}>{value}</div>
-      {delta && <div style={{ fontSize: 11, color: deltaColor ?? 'var(--t3)' }}>{delta}</div>}
+    <div style={{ background: 'var(--surface)', borderRadius: 12, padding: '16px 20px' }}>
+      <div style={{ fontSize: 11, color: '#9CA3AF', fontWeight: 400, marginBottom: 10 }}>{label}</div>
+      <div style={{ fontSize: 26, fontWeight: 600, color: '#0D0D0D', lineHeight: 1, letterSpacing: '-0.02em', marginBottom: 6 }}>{value}</div>
+      {delta && <div style={{ fontSize: 11, color: deltaColor ?? '#9CA3AF' }}>{delta}</div>}
     </div>
   )
 }
@@ -31,14 +31,14 @@ export default function HealthPage() {
 
       {/* KPIs */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 12, marginBottom: 20 }}>
-        <KpiCard label="Gateway Status" value={<span style={{ color: '#16A34A', fontSize: 18 }}>● Operational</span>} delta="99.98% uptime (30d)" />
+        <KpiCard label="Gateway Status" value={<span style={{ color: '#10B981', fontSize: 22, fontWeight: 600, letterSpacing: '-0.02em' }}>Operational</span>} delta="99.98% uptime · 30d" />
         <KpiCard label="p50 Latency" value="312ms" delta="→ Normal" />
         <KpiCard label="p99 Latency" value="1,840ms" delta="→ Normal" />
         <KpiCard label="Error Rate" value="0.8%" delta="↓ Healthy" deltaColor="var(--ok)" />
       </div>
 
       {/* Pipeline diagram */}
-      <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, padding: 18, marginBottom: 16 }}>
+      <div style={{ background: 'var(--surface)', borderRadius: 12, padding: 18, marginBottom: 16 }}>
         <div style={{ fontSize: 13, fontWeight: 500, marginBottom: 18 }}>Middleware Pipeline — {MIDDLEWARE.length}-Step Chain</div>
         <div style={{ display: 'flex', alignItems: 'center', overflowX: 'auto', gap: 0 }}>
           {MIDDLEWARE.map((m, i) => (
@@ -47,9 +47,9 @@ export default function HealthPage() {
                 <div style={{
                   width: 40, height: 40, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center',
                   fontSize: 12, fontWeight: 600,
-                  background: m.status === 'warn' ? '#FFF3E0' : '#EDE9FF',
-                  border: `2px solid ${m.status === 'warn' ? 'var(--warn)' : 'var(--pri)'}`,
-                  color: m.status === 'warn' ? 'var(--warn)' : 'var(--pri)',
+                  background: m.status === 'warn' ? '#FEF9C3' : '#F0F0F0',
+                  border: `1.5px solid ${m.status === 'warn' ? '#F59E0B' : '#E0E0E0'}`,
+                  color: m.status === 'warn' ? '#F59E0B' : '#6B7280',
                 }}>
                   {m.n}
                 </div>
@@ -65,12 +65,12 @@ export default function HealthPage() {
       </div>
 
       {/* Uptime history */}
-      <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, padding: 18 }}>
+      <div style={{ background: 'var(--surface)', borderRadius: 12, padding: 18 }}>
         <div style={{ fontSize: 13, fontWeight: 500, marginBottom: 14 }}>Uptime History (last 30 days)</div>
         <div style={{ display: 'flex', gap: 3, marginBottom: 8 }}>
           {Array.from({ length: 30 }).map((_, i) => {
             const ok = i !== 12 && i !== 24
-            return <div key={i} style={{ flex: 1, height: 28, borderRadius: 4, background: ok ? '#16A34A' : '#BA1A1A', opacity: ok ? 0.7 + (i / 30) * 0.3 : 1 }} title={ok ? 'Operational' : 'Incident'} />
+            return <div key={i} style={{ flex: 1, height: 24, borderRadius: 3, background: ok ? '#D1FAE5' : '#FECACA' }} title={ok ? 'Operational' : 'Incident'} />
           })}
         </div>
         <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: 'var(--t3)' }}>

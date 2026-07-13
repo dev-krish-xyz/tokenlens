@@ -15,13 +15,31 @@ function fmtDay(iso: string) {
 
 function KpiCard({ label, value, delta, deltaColor }: { label: string; value: React.ReactNode; delta?: string; deltaColor?: string }) {
   return (
-    <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, padding: '16px 18px' }}>
-      <div style={{ fontSize: 11, color: 'var(--t3)', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6 }}>{label}</div>
-      <div style={{ fontSize: 20, fontWeight: 600, fontFamily: 'monospace', marginBottom: 3 }}>{value}</div>
-      {delta && <div style={{ fontSize: 11, color: deltaColor ?? 'var(--t3)' }}>{delta}</div>}
+    <div style={{ background: 'var(--surface)', borderRadius: 12, padding: '16px 20px' }}>
+      <div style={{ fontSize: 11, color: '#9CA3AF', fontWeight: 400, marginBottom: 10 }}>{label}</div>
+      <div style={{ fontSize: 26, fontWeight: 600, color: '#0D0D0D', lineHeight: 1, letterSpacing: '-0.02em', marginBottom: 6 }}>{value}</div>
+      {delta && <div style={{ fontSize: 11, color: deltaColor ?? '#9CA3AF' }}>{delta}</div>}
     </div>
   )
 }
+
+// ─── DEMO DATA — remove when real data flows ────────────────
+const DEMO_DAILY = Array.from({ length: 30 }, (_, i) => {
+  const d = new Date('2026-06-12')
+  d.setDate(d.getDate() - (29 - i))
+  const trend = 14 + i * 0.48
+  const wave = Math.sin(i * 0.71) * 4.2 + Math.cos(i * 1.3) * 2.1
+  const totalCost = parseFloat(Math.max(trend + wave, 4).toFixed(4))
+  return { day: d.toISOString().slice(0, 10), totalCost, requestCount: Math.round(totalCost * 39) }
+})
+const DEMO_TOP_MODELS = [
+  { model: 'gpt-4o', provider: 'openai', totalCost: 420.12, requestCount: 1840 },
+  { model: 'claude-3-5-sonnet-20241022', provider: 'anthropic', totalCost: 310.88, requestCount: 920 },
+  { model: 'gpt-4o-mini', provider: 'openai', totalCost: 180.44, requestCount: 4200 },
+  { model: 'claude-3-haiku-20240307', provider: 'anthropic', totalCost: 95.30, requestCount: 2100 },
+  { model: 'gemini-1.5-pro', provider: 'gemini', totalCost: 67.18, requestCount: 560 },
+]
+// ────────────────────────────────────────────────────────────
 
 export default function ForecastingPage() {
   const [days, setDays] = useQueryState('days', parseAsInteger.withDefault(7))
@@ -30,20 +48,23 @@ export default function ForecastingPage() {
   const { data: daily = [], isLoading } = trpc.cost.getDailySpend.useQuery({ days })
   const { data: topModels = [] } = trpc.cost.getTopModels.useQuery({ days })
   const { data: stats } = trpc.cost.getSummaryStats.useQuery({ days })
+
+  const displayDaily = (!isLoading && daily.length === 0) ? DEMO_DAILY.slice(-days) : daily
+  const displayModels = topModels.length === 0 && !isLoading ? DEMO_TOP_MODELS : topModels
   // TODO: trpc.forecasting.getProjection.useQuery({ days }) — ML-based projection endpoint
 
   // Client-side linear projection from actual data
-  const totalActual = daily.reduce((s, d) => s + d.totalCost, 0)
-  const dailyAvg = daily.length > 0 ? totalActual / daily.length : 0
+  const totalActual = displayDaily.reduce((s, d) => s + d.totalCost, 0)
+  const dailyAvg = displayDaily.length > 0 ? totalActual / displayDaily.length : 0
   const daysInMonth = 30
   const projected = dailyAvg * daysInMonth
   const burnRate = dailyAvg
-  const maxModelCost = Math.max(...topModels.map((m) => m.totalCost), 1)
+  const maxModelCost = Math.max(...displayModels.map((m) => m.totalCost), 1)
 
   // Build chart data: actual + forecast extension
   const today = new Date()
   const chartData = [
-    ...daily.map((d) => ({ day: d.day, actual: d.totalCost, forecast: undefined as number | undefined })),
+    ...displayDaily.map((d) => ({ day: d.day, actual: d.totalCost, forecast: undefined as number | undefined })),
     // Add forecast dots for next 7 days
     ...Array.from({ length: 7 }).map((_, i) => {
       const d = new Date(today)
@@ -86,7 +107,7 @@ export default function ForecastingPage() {
       </div>
 
       {/* Forecast chart */}
-      <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, padding: 18, marginBottom: 16 }}>
+      <div style={{ background: 'var(--surface)', borderRadius: 12, padding: 18, marginBottom: 16 }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
           <div style={{ fontSize: 13, fontWeight: 500 }}>30-Day Spend Forecast</div>
           <div style={{ display: 'flex', gap: 16 }}>
@@ -105,8 +126,8 @@ export default function ForecastingPage() {
             <AreaChart data={chartData} margin={{ top: 4, right: 4, bottom: 0, left: 0 }}>
               <defs>
                 <linearGradient id="fg" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="#5A4EC7" stopOpacity={0.15} />
-                  <stop offset="100%" stopColor="#5A4EC7" stopOpacity={0} />
+                  <stop offset="0%" stopColor="#6366F1" stopOpacity={0.05} />
+                  <stop offset="100%" stopColor="#6366F1" stopOpacity={0} />
                 </linearGradient>
               </defs>
               <XAxis dataKey="day" tickFormatter={fmtDay} tick={{ fontSize: 9, fill: '#787585' }} axisLine={false} tickLine={false} />
@@ -119,8 +140,8 @@ export default function ForecastingPage() {
               {stats?.totalCost != null && stats.totalCost > 0 && (
                 <ReferenceLine y={stats.totalCost * 2} stroke="#BA1A1A" strokeDasharray="4 3" label={{ value: 'Budget', fill: '#BA1A1A', fontSize: 9 }} />
               )}
-              <Area type="monotone" dataKey="actual" stroke="#5A4EC7" strokeWidth={2} fill="url(#fg)" dot={false} connectNulls={false} />
-              <Area type="monotone" dataKey="forecast" stroke="#5A4EC7" strokeWidth={1.5} strokeDasharray="5 4" fill="none" dot={false} connectNulls={false} opacity={0.6} />
+              <Area type="monotone" dataKey="actual" stroke="#6366F1" strokeWidth={2} fill="url(#fg)" dot={false} connectNulls={false} />
+              <Area type="monotone" dataKey="forecast" stroke="#6366F1" strokeWidth={1.5} strokeDasharray="5 4" fill="none" dot={false} connectNulls={false} opacity={0.6} />
             </AreaChart>
           </ResponsiveContainer>
         )}
@@ -131,13 +152,10 @@ export default function ForecastingPage() {
       </div>
 
       {/* Model forecast */}
-      <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, padding: 18 }}>
+      <div style={{ background: 'var(--surface)', borderRadius: 12, padding: 18 }}>
         <div style={{ fontSize: 13, fontWeight: 500, marginBottom: 14 }}>Model Cost Forecast (30d linear)</div>
-        {topModels.length === 0 ? (
-          <div style={{ fontSize: 12, color: 'var(--t3)', textAlign: 'center', padding: '20px 0' }}>No model data yet</div>
-        ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-            {topModels.slice(0, 5).map((m) => {
+            {displayModels.slice(0, 5).map((m) => {
               const projected30 = m.totalCost * (30 / days)
               const pct = (m.totalCost / maxModelCost) * 100
               return (
@@ -153,7 +171,6 @@ export default function ForecastingPage() {
               )
             })}
           </div>
-        )}
       </div>
     </div>
   )

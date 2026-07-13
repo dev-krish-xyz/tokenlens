@@ -20,17 +20,17 @@ const EXAMPLE_GUARDRAILS: Guardrail[] = [
   { id: '4', name: 'Model Allowlist', description: 'Only gpt-4o, claude-3-opus', type: 'Model', scope: 'tl-vk-staging', triggered: '2 today', active: false },
 ]
 
-const TYPE_CHIP: Record<string, { bg: string; color: string }> = {
-  'Budget Hard': { bg: '#FEF2F2', color: '#BA1A1A' },
-  'Budget Soft': { bg: '#FEF3C7', color: '#D97706' },
-  'Rate Limit': { bg: '#FEF3C7', color: '#D97706' },
-  'Content': { bg: '#EDE9FF', color: '#5A4EC7' },
-  'Model': { bg: '#F4F4F5', color: '#474553' },
+const TYPE_CHIP: Record<string, { color: string }> = {
+  'Budget Hard': { color: '#EF4444' },
+  'Budget Soft': { color: '#F59E0B' },
+  'Rate Limit': { color: '#F59E0B' },
+  'Content': { color: '#6366F1' },
+  'Model': { color: '#6B7280' },
 }
 
 const TH: React.CSSProperties = {
-  padding: '9px 16px', textAlign: 'left', fontSize: 10, fontWeight: 500,
-  color: 'var(--t3)', textTransform: 'uppercase', letterSpacing: '0.05em',
+  padding: '9px 16px', textAlign: 'left', fontSize: 11, fontWeight: 400,
+  color: 'var(--t3)',
   background: 'var(--bg)', borderBottom: '1px solid var(--border)',
 }
 
@@ -88,7 +88,7 @@ export default function GuardrailsPage() {
       </div>
 
       {/* Table */}
-      <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, overflow: 'hidden' }}>
+      <div style={{ background: 'var(--surface)', borderRadius: 12, overflow: 'hidden' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 18px', borderBottom: '1px solid var(--border)' }}>
           <div style={{ fontSize: 13, fontWeight: 500 }}>Active Guardrails</div>
           <span style={{ fontSize: 12, color: 'var(--t3)' }}>{guardrails.length} rules</span>
@@ -125,7 +125,7 @@ export default function GuardrailsPage() {
                       <div style={{ fontSize: 11, color: 'var(--t3)', marginTop: 1 }}>{g.description}</div>
                     </td>
                     <td style={{ padding: '11px 16px', borderBottom: '1px solid var(--border)' }}>
-                      <span style={{ display: 'inline-flex', padding: '2px 8px', borderRadius: 9999, fontSize: 10, fontWeight: 500, background: chip.bg, color: chip.color }}>{g.type}</span>
+                      <span style={{ fontSize: 11, color: chip.color, fontWeight: 500 }}>{g.type}</span>
                     </td>
                     <td style={{ padding: '11px 16px', fontSize: 11, fontFamily: 'monospace', borderBottom: '1px solid var(--border)' }}>{g.scope}</td>
                     <td style={{ padding: '11px 16px', fontSize: 12, fontFamily: 'monospace', borderBottom: '1px solid var(--border)' }}>{g.triggered}</td>

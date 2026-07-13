@@ -1,6 +1,6 @@
 'use client'
 import Link from 'next/link'
-import { usePathname, useSearchParams } from 'next/navigation'
+import { usePathname } from 'next/navigation'
 import {
   IconLayoutDashboard,
   IconChartBar,
@@ -38,53 +38,53 @@ const SECTIONS: NavSection[] = [
   {
     title: 'Overview',
     items: [
-      { href: '/dashboard', label: 'Overview', icon: <IconLayoutDashboard size={15} /> },
+      { href: '/dashboard', label: 'Overview', icon: <IconLayoutDashboard size={14} /> },
     ],
   },
   {
     title: 'Analytics',
     items: [
-      { href: '/dashboard/analytics', label: 'Usage & Analytics', icon: <IconChartBar size={15} /> },
-      { href: '/dashboard/logs', label: 'Request Logs', icon: <IconFileText size={15} /> },
-      { href: '/dashboard/analytics', label: 'Traces', icon: <IconGitBranch size={15} />, badge: 'new', tab: 'traces' },
+      { href: '/dashboard/analytics', label: 'Usage & Analytics', icon: <IconChartBar size={14} /> },
+      { href: '/dashboard/logs', label: 'Request Logs', icon: <IconFileText size={14} /> },
+      { href: '/dashboard/analytics', label: 'Traces', icon: <IconGitBranch size={14} />, badge: 'new', tab: 'traces' },
     ],
   },
   {
     title: 'Governance',
     items: [
-      { href: '/dashboard/guardrails', label: 'Guardrails', icon: <IconShieldLock size={15} /> },
-      { href: '/dashboard/keys', label: 'Virtual Keys', icon: <IconKey size={15} /> },
-      { href: '/dashboard/environments', label: 'Environments', icon: <IconLayersIntersect size={15} />, badge: 'new' },
+      { href: '/dashboard/guardrails', label: 'Guardrails', icon: <IconShieldLock size={14} /> },
+      { href: '/dashboard/keys', label: 'Virtual Keys', icon: <IconKey size={14} /> },
+      { href: '/dashboard/environments', label: 'Environments', icon: <IconLayersIntersect size={14} />, badge: 'new' },
     ],
   },
   {
     title: 'Intelligence',
     items: [
-      { href: '/dashboard/customers', label: 'Customers', icon: <IconUsers size={15} /> },
-      { href: '/dashboard/forecasting', label: 'Forecasting', icon: <IconChartLine size={15} />, badge: 'new' },
-      { href: '/dashboard/budget', label: 'Alerts', icon: <IconBell size={15} /> },
+      { href: '/dashboard/customers', label: 'Customers', icon: <IconUsers size={14} /> },
+      { href: '/dashboard/forecasting', label: 'Forecasting', icon: <IconChartLine size={14} />, badge: 'new' },
+      { href: '/dashboard/budget', label: 'Alerts', icon: <IconBell size={14} /> },
     ],
   },
   {
     title: 'Infrastructure',
     items: [
-      { href: '/dashboard/providers', label: 'Providers', icon: <IconPlug size={15} /> },
-      { href: '/dashboard/health', label: 'Gateway Health', icon: <IconHeartbeat size={15} />, badge: 'new' },
-      { href: '/dashboard/cache', label: 'Cache', icon: <IconDatabase size={15} /> },
+      { href: '/dashboard/providers', label: 'Providers', icon: <IconPlug size={14} /> },
+      { href: '/dashboard/health', label: 'Gateway Health', icon: <IconHeartbeat size={14} />, badge: 'new' },
+      { href: '/dashboard/cache', label: 'Cache', icon: <IconDatabase size={14} /> },
     ],
   },
   {
     title: 'Team & Access',
     items: [
-      { href: '/dashboard/settings', label: 'Team Management', icon: <IconUsersGroup size={15} />, tab: 'team' },
-      { href: '/dashboard/audit', label: 'Audit Log', icon: <IconClipboardList size={15} /> },
-      { href: '/dashboard/export', label: 'Export Center', icon: <IconDownload size={15} /> },
+      { href: '/dashboard/settings', label: 'Team Management', icon: <IconUsersGroup size={14} />, tab: 'team' },
+      { href: '/dashboard/audit', label: 'Audit Log', icon: <IconClipboardList size={14} /> },
+      { href: '/dashboard/export', label: 'Export Center', icon: <IconDownload size={14} /> },
     ],
   },
   {
     title: 'Settings',
     items: [
-      { href: '/dashboard/settings', label: 'General Settings', icon: <IconSettings size={15} /> },
+      { href: '/dashboard/settings', label: 'General Settings', icon: <IconSettings size={14} /> },
     ],
   },
 ]
@@ -93,9 +93,7 @@ export function Sidebar() {
   const pathname = usePathname()
 
   function isActive(item: NavItem): boolean {
-    // Traces and Team Management share a base href with different tabs — just check pathname
     if (item.href === '/dashboard') return pathname === '/dashboard'
-    // Settings team tab: active when on settings page with team tab
     if (item.label === 'Team Management') return pathname.startsWith('/dashboard/settings')
     if (item.label === 'General Settings') return pathname === '/dashboard/settings'
     return pathname.startsWith(item.href)
@@ -104,9 +102,9 @@ export function Sidebar() {
   return (
     <aside
       style={{
-        width: 220,
-        background: 'var(--surface)',
-        borderRight: '1px solid var(--border)',
+        width: 200,
+        background: '#FAFAFA',
+        borderRight: '1px solid #E4E4E7',
         display: 'flex',
         flexDirection: 'column',
         flexShrink: 0,
@@ -117,47 +115,47 @@ export function Sidebar() {
       {/* Logo */}
       <div
         style={{
-          padding: '16px',
+          padding: '14px 16px',
           display: 'flex',
           alignItems: 'center',
-          gap: 8,
-          fontSize: 14,
-          fontWeight: 600,
-          borderBottom: '1px solid var(--border)',
+          gap: 7,
+          borderBottom: '1px solid #E4E4E7',
           flexShrink: 0,
-          color: 'var(--t1)',
         }}
       >
         <span
           style={{
-            width: 8,
-            height: 8,
-            borderRadius: '50%',
-            background: 'var(--pri)',
+            width: 18,
+            height: 18,
+            borderRadius: 5,
+            background: 'linear-gradient(135deg, #6366F1 0%, #4F46E5 100%)',
+            display: 'inline-flex',
+            alignItems: 'center',
+            justifyContent: 'center',
             flexShrink: 0,
           }}
-        />
-        TokenLens
-        <span style={{ fontSize: 10, fontWeight: 400, color: 'var(--t3)', marginLeft: 'auto' }}>
-          v1.0
+        >
+          <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'rgba(255,255,255,0.9)' }} />
+        </span>
+        <span style={{ fontSize: 13, fontWeight: 600, color: '#0D0D0D', letterSpacing: '-0.01em' }}>
+          TokenLens
         </span>
       </div>
 
-      {/* Nav sections */}
-      <div style={{ padding: '8px 0', flex: 1 }}>
+      {/* Nav */}
+      <div style={{ padding: '6px 0', flex: 1 }}>
         {SECTIONS.map((section, si) => (
           <div key={section.title}>
             {si > 0 && (
-              <div style={{ height: 1, background: 'var(--border)', margin: '8px 12px' }} />
+              <div style={{ height: 1, background: '#E4E4E7', margin: '6px 12px' }} />
             )}
             <div
               style={{
                 fontSize: 10,
                 fontWeight: 500,
-                color: 'var(--t3)',
-                textTransform: 'uppercase',
-                letterSpacing: '0.07em',
-                padding: '14px 16px 4px',
+                color: '#A1A1AA',
+                padding: '10px 16px 3px',
+                letterSpacing: '0.02em',
               }}
             >
               {section.title}
@@ -172,41 +170,37 @@ export function Sidebar() {
                   style={{
                     display: 'flex',
                     alignItems: 'center',
-                    gap: 8,
-                    padding: '7px 12px',
-                    margin: '1px 6px',
-                    borderRadius: 8,
+                    gap: 7,
+                    padding: '6px 10px',
+                    margin: '1px 8px',
+                    borderRadius: 7,
                     cursor: 'pointer',
-                    color: active ? 'var(--pri)' : 'var(--t2)',
-                    background: active ? 'var(--pri-m)' : 'transparent',
+                    color: active ? '#0D0D0D' : '#52525B',
+                    background: active ? '#EBEBEC' : 'transparent',
                     fontWeight: active ? 500 : 400,
                     fontSize: 12,
                     textDecoration: 'none',
-                    transition: 'background 0.1s, color 0.1s',
+                    transition: 'all 0.08s',
                     whiteSpace: 'nowrap',
                     userSelect: 'none',
                   }}
                   onMouseEnter={(e) => {
-                    if (!active) e.currentTarget.style.background = 'var(--bg)'
+                    if (!active) {
+                      e.currentTarget.style.background = '#F0F0F2'
+                      e.currentTarget.style.color = '#18181B'
+                    }
                   }}
                   onMouseLeave={(e) => {
-                    if (!active) e.currentTarget.style.background = 'transparent'
+                    if (!active) {
+                      e.currentTarget.style.background = 'transparent'
+                      e.currentTarget.style.color = '#52525B'
+                    }
                   }}
                 >
-                  <span style={{ flexShrink: 0, opacity: active ? 1 : 0.7 }}>{item.icon}</span>
-                  {item.label}
+                  <span style={{ flexShrink: 0, opacity: active ? 1 : 0.8, display: 'flex' }}>{item.icon}</span>
+                  <span style={{ flex: 1 }}>{item.label}</span>
                   {item.badge && (
-                    <span
-                      style={{
-                        fontSize: 9,
-                        background: item.badge === 'new' ? '#DCFCE7' : 'var(--pri-m)',
-                        color: item.badge === 'new' ? '#16A34A' : 'var(--pri)',
-                        padding: '1px 5px',
-                        borderRadius: 9999,
-                        marginLeft: 'auto',
-                        fontWeight: 600,
-                      }}
-                    >
+                    <span style={{ fontSize: 10, color: '#C4C4C4', fontWeight: 400 }}>
                       {item.badge}
                     </span>
                   )}

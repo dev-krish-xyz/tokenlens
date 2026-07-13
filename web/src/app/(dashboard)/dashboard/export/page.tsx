@@ -4,7 +4,7 @@ import { trpc } from '../../../../trpc/client.ts'
 
 function ExportCard({ icon, title, description, children }: { icon: string; title: string; description: string; children: React.ReactNode }) {
   return (
-    <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, padding: 20 }}>
+    <div style={{ background: 'var(--surface)', borderRadius: 12, padding: 20 }}>
       <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
         <span style={{ fontSize: 24, flexShrink: 0, marginTop: 2 }}>{icon}</span>
         <div style={{ flex: 1 }}>
@@ -128,9 +128,9 @@ export default function ExportPage() {
 
         {/* ClickHouse Direct — stub */}
         <ExportCard icon="🗄️" title="ClickHouse Direct" description="Read-only ClickHouse credentials for direct analytics queries.">
-          <div style={{ background: 'var(--pri-m)', borderRadius: 8, padding: '10px 12px', marginBottom: 12 }}>
-            <div style={{ fontSize: 11, color: 'var(--pri)', fontWeight: 500, marginBottom: 6 }}>Connection string</div>
-            <div style={{ fontFamily: 'monospace', fontSize: 10, color: 'var(--pri)' }}>ch://ro_***@ch.tokenlens.ai:9000/logs</div>
+          <div style={{ background: '#F5F5F5', borderRadius: 8, padding: '10px 12px', marginBottom: 12 }}>
+            <div style={{ fontSize: 11, color: '#6B7280', fontWeight: 500, marginBottom: 6 }}>Connection string</div>
+            <div style={{ fontFamily: 'monospace', fontSize: 10, color: '#0D0D0D' }}>ch://ro_***@ch.tokenlens.ai:9000/logs</div>
           </div>
           <button
             onClick={() => void copyConnectionString()}

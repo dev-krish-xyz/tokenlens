@@ -4,6 +4,14 @@ import Link from 'next/link'
 import { trpc } from '../../../../trpc/client.ts'
 import { IconBell, IconPlus, IconX, IconTrendingUp, IconShieldCheck } from '@tabler/icons-react'
 
+// ─── DEMO DATA — remove when real data flows ────────────────
+const DEMO_KEY_BUDGETS = [
+  { keyId: 'demo-1', keyName: 'prod-chat', spend: 371.40, cap: 500, percentage: 74.28, remaining: 128.60 },
+  { keyId: 'demo-2', keyName: 'staging', spend: 46.80, cap: 200, percentage: 23.40, remaining: 153.20 },
+  { keyId: 'demo-3', keyName: 'analytics-pipeline', spend: 136.50, cap: 150, percentage: 91.00, remaining: 13.50 },
+]
+// ────────────────────────────────────────────────────────────
+
 const THRESHOLD_OPTIONS = [50, 70, 80, 90, 95]
 const COOLDOWN_OPTIONS = [
   { label: '15 min', value: 15 },
@@ -28,10 +36,10 @@ function barColor(pct: number): string {
   return 'var(--ok)'
 }
 
-function statusChip(pct: number): { label: string; bg: string; color: string } {
-  if (pct >= 100) return { label: 'Blocked', bg: '#FEF2F2', color: '#BA1A1A' }
-  if (pct >= 80) return { label: 'Warning', bg: '#FEF3C7', color: '#D97706' }
-  return { label: 'Active', bg: '#DCFCE7', color: '#16A34A' }
+function statusChip(pct: number): { label: string; color: string } {
+  if (pct >= 100) return { label: 'Blocked', color: '#EF4444' }
+  if (pct >= 80) return { label: 'Warning', color: '#F59E0B' }
+  return { label: 'Active', color: '#10B981' }
 }
 
 const labelStyle: React.CSSProperties = {
@@ -57,6 +65,7 @@ export default function BudgetPage() {
   const utils = trpc.useUtils()
   const { data: wsBudget, isLoading: wsLoading } = trpc.budget.getWorkspaceBudgetStatus.useQuery()
   const { data: keyBudgets = [], isLoading: keyLoading } = trpc.budget.getKeyBudgetStatus.useQuery()
+  const displayBudgets = (!keyLoading && keyBudgets.length === 0) ? DEMO_KEY_BUDGETS : keyBudgets
   const { data: alertConfigs = [], isLoading: alertLoading } = trpc.alertConfig.listAlertConfigs.useQuery()
 
   const createAlert = trpc.alertConfig.createAlertConfig.useMutation({
@@ -105,8 +114,7 @@ export default function BudgetPage() {
               key={i}
               style={{
                 background: 'var(--surface)',
-                border: '1px solid var(--border)',
-                borderRadius: 14,
+                borderRadius: 12,
                 padding: '18px',
                 height: 120,
               }}
@@ -120,8 +128,7 @@ export default function BudgetPage() {
             <div
               style={{
                 background: 'var(--surface)',
-                border: '1px solid var(--border)',
-                borderRadius: 14,
+                borderRadius: 12,
                 padding: 18,
                 marginBottom: 16,
               }}
@@ -149,7 +156,6 @@ export default function BudgetPage() {
                     padding: '10px 14px',
                     borderRadius: 8,
                     background: '#FEF2F2',
-                    border: '1px solid #FCA5A5',
                     fontSize: 12,
                     color: 'var(--err)',
                     marginBottom: 14,
@@ -204,8 +210,8 @@ export default function BudgetPage() {
             <div
               style={{
                 background: 'var(--surface)',
-                border: '1px dashed var(--border)',
-                borderRadius: 14,
+                border: '1px dashed #E5E5E5',
+                borderRadius: 12,
                 padding: '24px 20px',
                 marginBottom: 16,
                 textAlign: 'center',
@@ -227,8 +233,7 @@ export default function BudgetPage() {
           <div
             style={{
               background: 'var(--surface)',
-              border: '1px solid var(--border)',
-              borderRadius: 14,
+              borderRadius: 12,
               overflow: 'hidden',
               marginBottom: 16,
             }}
@@ -251,7 +256,7 @@ export default function BudgetPage() {
               </Link>
             </div>
 
-            {keyBudgets.length === 0 ? (
+            {displayBudgets.length === 0 ? (
               <div
                 style={{
                   padding: '32px 20px',
@@ -304,14 +309,13 @@ export default function BudgetPage() {
               </div>
             ) : (
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, padding: 18 }}>
-                {keyBudgets.map((kb) => {
+                {displayBudgets.map((kb) => {
                   const chip = statusChip(kb.percentage)
                   return (
                     <div
                       key={kb.keyId}
                       style={{
-                        background: 'var(--bg)',
-                        border: '1px solid var(--border)',
+                        background: 'var(--surface-2)',
                         borderRadius: 10,
                         padding: '14px 16px',
                       }}
@@ -337,19 +341,7 @@ export default function BudgetPage() {
                         >
                           {kb.keyName.length > 20 ? `${kb.keyName.slice(0, 20)}…` : kb.keyName}
                         </span>
-                        <span
-                          style={{
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            padding: '2px 8px',
-                            borderRadius: 9999,
-                            fontSize: 10,
-                            fontWeight: 500,
-                            background: chip.bg,
-                            color: chip.color,
-                            flexShrink: 0,
-                          }}
-                        >
+                        <span style={{ fontSize: 11, fontWeight: 500, color: chip.color, flexShrink: 0 }}>
                           {chip.label}
                         </span>
                       </div>
@@ -396,8 +388,7 @@ export default function BudgetPage() {
           <div
             style={{
               background: 'var(--surface)',
-              border: '1px solid var(--border)',
-              borderRadius: 14,
+              borderRadius: 12,
               overflow: 'hidden',
             }}
           >
@@ -502,10 +493,8 @@ export default function BudgetPage() {
                     <div
                       key={cfg.id}
                       style={{
-                        background: 'var(--surface)',
-                        border: '1px solid var(--border)',
-                        borderLeft: `3px solid ${borderColor}`,
-                        borderRadius: 14,
+                        background: 'var(--surface-2)',
+                        borderRadius: 10,
                         padding: '14px 16px',
                       }}
                     >

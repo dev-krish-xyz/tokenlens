@@ -8,103 +8,58 @@ export default async function DashboardLayout({ children }: { children: React.Re
   const { workspace, session } = await requireWorkspace()
 
   const initials = session.user.name
-    ? session.user.name
-        .split(' ')
-        .map((w: string) => w[0])
-        .join('')
-        .toUpperCase()
-        .slice(0, 2)
+    ? session.user.name.split(' ').map((w: string) => w[0]).join('').toUpperCase().slice(0, 2)
     : session.user.email.slice(0, 2).toUpperCase()
 
   return (
     <NuqsAdapter>
       <TRPCProvider>
         <WorkspaceProvider workspace={workspace}>
-          <div
-            style={{
-              display: 'flex',
-              height: '100vh',
-              overflow: 'hidden',
-            }}
-          >
-            {/* Sidebar */}
+          <div style={{ display: 'flex', height: '100vh', overflow: 'hidden', background: '#FFFFFF' }}>
             <Sidebar />
 
-            {/* Main */}
-            <div
-              style={{
-                flex: 1,
-                display: 'flex',
-                flexDirection: 'column',
-                overflow: 'hidden',
-                minWidth: 0,
-              }}
-            >
+            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', minWidth: 0 }}>
               {/* Topbar */}
               <header
                 style={{
-                  height: 56,
-                  background: 'var(--surface)',
-                  borderBottom: '1px solid var(--border)',
+                  height: 48,
+                  background: '#FFFFFF',
+                  borderBottom: '1px solid #E4E4E7',
                   display: 'flex',
                   alignItems: 'center',
-                  padding: '0 24px',
+                  padding: '0 20px',
                   flexShrink: 0,
-                  gap: 0,
+                  gap: 12,
                 }}
               >
-                <div
+                {/* Workspace name */}
+                <span
                   style={{
-                    fontSize: 14,
-                    fontWeight: 600,
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 7,
-                    marginRight: 'auto',
-                    color: 'var(--t1)',
+                    fontSize: 12,
+                    color: '#6B7280',
+                    fontWeight: 400,
                   }}
                 >
-                  <span
-                    style={{
-                      width: 7,
-                      height: 7,
-                      borderRadius: '50%',
-                      background: 'var(--pri)',
-                    }}
-                  />
-                  TokenLens
-                </div>
+                  {workspace.name}
+                </span>
 
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                  <span
-                    style={{
-                      fontSize: 11,
-                      fontFamily: 'monospace',
-                      background: 'var(--bg)',
-                      border: '1px solid var(--border)',
-                      padding: '4px 10px',
-                      borderRadius: 6,
-                      color: 'var(--t2)',
-                    }}
-                  >
-                    {workspace.name}
-                  </span>
-
+                <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 8 }}>
                   {/* Avatar */}
                   <div
                     style={{
-                      width: 30,
-                      height: 30,
+                      width: 26,
+                      height: 26,
                       borderRadius: '50%',
-                      background: 'var(--pri-m)',
-                      color: 'var(--pri)',
+                      background: '#F0F0F0',
+                      color: '#6B7280',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
-                      fontSize: 11,
+                      fontSize: 10,
                       fontWeight: 600,
                       cursor: 'pointer',
                       flexShrink: 0,
+                      border: '1px solid #E5E5E5',
                     }}
                   >
                     {initials}
@@ -112,41 +67,8 @@ export default async function DashboardLayout({ children }: { children: React.Re
                 </div>
               </header>
 
-              {/* Status bar */}
-              <div
-                style={{
-                  background: '#16A34A',
-                  color: '#fff',
-                  fontSize: 11,
-                  padding: '7px 24px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 8,
-                  flexShrink: 0,
-                }}
-              >
-                <span
-                  style={{
-                    width: 6,
-                    height: 6,
-                    borderRadius: '50%',
-                    background: 'rgba(255,255,255,0.7)',
-                    flexShrink: 0,
-                  }}
-                />
-                All systems operational
-                <span style={{ marginLeft: 'auto', opacity: 0.7 }}>
-                  {workspace.name} · {new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
-                </span>
-              </div>
-
               {/* Content */}
-              <main
-                style={{
-                  flex: 1,
-                  overflowY: 'auto',
-                }}
-              >
+              <main style={{ flex: 1, overflowY: 'auto', background: '#FFFFFF' }}>
                 {children}
               </main>
             </div>

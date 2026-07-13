@@ -12,16 +12,16 @@ const EXAMPLE_EVENTS = [
   { time: '2 days ago', actor: 'System', action: 'alert.fired', resource: 'Budget 80% — tl-vk-prod-chat', ip: '—', actionType: 'system' },
 ]
 
-const ACTION_CHIP: Record<string, { bg: string; color: string }> = {
-  create: { bg: '#DCFCE7', color: '#16A34A' },
-  update: { bg: '#EDE9FF', color: '#5A4EC7' },
-  block: { bg: '#FEF2F2', color: '#BA1A1A' },
-  system: { bg: '#F4F4F5', color: '#474553' },
+const ACTION_CHIP: Record<string, { color: string }> = {
+  create: { color: '#10B981' },
+  update: { color: '#6366F1' },
+  block: { color: '#EF4444' },
+  system: { color: '#9CA3AF' },
 }
 
 const TH: React.CSSProperties = {
-  padding: '9px 16px', textAlign: 'left', fontSize: 10, fontWeight: 500,
-  color: 'var(--t3)', textTransform: 'uppercase', letterSpacing: '0.05em',
+  padding: '9px 16px', textAlign: 'left', fontSize: 11, fontWeight: 400,
+  color: 'var(--t3)',
   background: 'var(--bg)', borderBottom: '1px solid var(--border)',
 }
 
@@ -49,7 +49,7 @@ export default function AuditPage() {
       </div>
 
       {/* Table */}
-      <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, overflow: 'hidden' }}>
+      <div style={{ background: 'var(--surface)', borderRadius: 12, overflow: 'hidden' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 18px', borderBottom: '1px solid var(--border)' }}>
           <div style={{ fontSize: 13, fontWeight: 500 }}>Recent Activity</div>
           <input
@@ -81,7 +81,7 @@ export default function AuditPage() {
                     <td style={{ padding: '11px 16px', fontSize: 11, fontFamily: 'monospace', color: 'var(--t3)', borderBottom: '1px solid var(--border)' }}>{ev.time}</td>
                     <td style={{ padding: '11px 16px', fontSize: 12, borderBottom: '1px solid var(--border)' }}>{ev.actor}</td>
                     <td style={{ padding: '11px 16px', borderBottom: '1px solid var(--border)' }}>
-                      <span style={{ display: 'inline-flex', padding: '2px 8px', borderRadius: 9999, fontSize: 10, fontWeight: 500, background: chip.bg, color: chip.color }}>{ev.action}</span>
+                      <span style={{ fontSize: 11, color: chip.color, fontWeight: 500, fontFamily: 'monospace' }}>{ev.action}</span>
                     </td>
                     <td style={{ padding: '11px 16px', fontSize: 11, fontFamily: 'monospace', borderBottom: '1px solid var(--border)' }}>{ev.resource}</td>
                     <td style={{ padding: '11px 16px', fontSize: 11, fontFamily: 'monospace', color: 'var(--t3)', borderBottom: '1px solid var(--border)' }}>{ev.ip}</td>

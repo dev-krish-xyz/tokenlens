@@ -12,11 +12,9 @@ const DATE_OPTIONS = [
 const TH_STYLE: React.CSSProperties = {
   padding: '9px 16px',
   textAlign: 'left',
-  fontSize: 10,
-  fontWeight: 500,
+  fontSize: 11,
+  fontWeight: 400,
   color: 'var(--t3)',
-  textTransform: 'uppercase',
-  letterSpacing: '0.05em',
   background: 'var(--bg)',
   borderBottom: '1px solid var(--border)',
   whiteSpace: 'nowrap',
@@ -28,13 +26,24 @@ const TD_STYLE: React.CSSProperties = {
   borderBottom: '1px solid var(--border)',
 }
 
+// ─── DEMO DATA — remove when real data flows ────────────────
+const DEMO_CUSTOMERS = [
+  { userIdTag: 'user_acme_001', totalCost: 312.44, requestCount: 1840, avgCostPerReq: 0.1698, avgLatencyMs: 298, topModel: 'gpt-4o' },
+  { userIdTag: 'user_beta_corp', totalCost: 198.22, requestCount: 920, avgCostPerReq: 0.2155, avgLatencyMs: 842, topModel: 'claude-3-5-sonnet-20241022' },
+  { userIdTag: 'user_dev_3a9f', totalCost: 87.10, requestCount: 440, avgCostPerReq: 0.1980, avgLatencyMs: 315, topModel: 'gpt-4o-mini' },
+  { userIdTag: 'user_anon_7b2c', totalCost: 45.08, requestCount: 280, avgCostPerReq: 0.1610, avgLatencyMs: 267, topModel: 'gemini-1.5-pro' },
+  { userIdTag: 'user_trial_cc1d', totalCost: 18.34, requestCount: 94, avgCostPerReq: 0.1951, avgLatencyMs: 490, topModel: 'gpt-4o-mini' },
+]
+// ────────────────────────────────────────────────────────────
+
 export default function CustomersPage() {
   const [days, setDays] = useQueryState('days', parseAsInteger.withDefault(30))
   const { data = [], isLoading } = trpc.cost.getPerCustomerCost.useQuery({ days })
+  const displayData = (!isLoading && data.length === 0) ? DEMO_CUSTOMERS : data
 
-  const totalCost = data.reduce((s, c) => s + c.totalCost, 0)
-  const totalRequests = data.reduce((s, c) => s + c.requestCount, 0)
-  const maxCost = Math.max(...data.map((c) => c.totalCost), 1)
+  const totalCost = displayData.reduce((s, c) => s + c.totalCost, 0)
+  const totalRequests = displayData.reduce((s, c) => s + c.requestCount, 0)
+  const maxCost = Math.max(...displayData.map((c) => c.totalCost), 1)
 
   return (
     <div style={{ padding: 24 }}>
@@ -99,8 +108,7 @@ export default function CustomersPage() {
       {/* Banner */}
       <div
         style={{
-          background: 'var(--pri-m)',
-          border: '1px solid #C4B8FF',
+          background: 'var(--surface)',
           borderRadius: 12,
           padding: '14px 16px',
           marginBottom: 16,
@@ -111,7 +119,7 @@ export default function CustomersPage() {
       >
         <div style={{ fontSize: 18, color: 'var(--pri)', flexShrink: 0, marginTop: 1 }}>🧠</div>
         <div>
-          <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--pri)', marginBottom: 3 }}>
+          <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--t1)', marginBottom: 3 }}>
             Margin Intelligence
           </div>
           <div style={{ fontSize: 12, color: 'var(--t2)', lineHeight: 1.6 }}>
@@ -133,7 +141,7 @@ export default function CustomersPage() {
       </div>
 
       {/* KPI cards */}
-      {!isLoading && data.length > 0 && (
+      {!isLoading && displayData.length > 0 && (
         <div
           style={{
             display: 'grid',
@@ -143,7 +151,7 @@ export default function CustomersPage() {
           }}
         >
           {[
-            { label: 'Tracked Customers', value: data.length.toString() },
+            { label: 'Tracked Customers', value: displayData.length.toString() },
             {
               label: 'Total AI Cost',
               value: `$${totalCost.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
@@ -160,24 +168,14 @@ export default function CustomersPage() {
               key={card.label}
               style={{
                 background: 'var(--surface)',
-                border: '1px solid var(--border)',
-                borderRadius: 14,
-                padding: '16px 18px',
+                borderRadius: 12,
+                padding: '16px 20px',
               }}
             >
-              <div
-                style={{
-                  fontSize: 11,
-                  color: 'var(--t3)',
-                  fontWeight: 500,
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.05em',
-                  marginBottom: 6,
-                }}
-              >
+              <div style={{ fontSize: 11, color: '#9CA3AF', fontWeight: 400, marginBottom: 10 }}>
                 {card.label}
               </div>
-              <div style={{ fontSize: 20, fontWeight: 600, fontFamily: 'monospace' }}>
+              <div style={{ fontSize: 26, fontWeight: 600, color: '#0D0D0D', lineHeight: 1, letterSpacing: '-0.02em' }}>
                 {card.value}
               </div>
             </div>
@@ -189,8 +187,7 @@ export default function CustomersPage() {
       <div
         style={{
           background: 'var(--surface)',
-          border: '1px solid var(--border)',
-          borderRadius: 14,
+          borderRadius: 12,
           overflow: 'hidden',
         }}
       >
@@ -204,9 +201,9 @@ export default function CustomersPage() {
           }}
         >
           <div style={{ fontSize: 13, fontWeight: 500 }}>Customer Margin Table</div>
-          {data.length > 0 && (
+          {displayData.length > 0 && (
             <span style={{ fontSize: 12, color: 'var(--t3)' }}>
-              {data.length} customers · last {days} days
+              {displayData.length} customers · last {days} days
             </span>
           )}
         </div>
@@ -220,7 +217,7 @@ export default function CustomersPage() {
               />
             ))}
           </div>
-        ) : data.length === 0 ? (
+        ) : displayData.length === 0 ? (
           <div
             style={{
               padding: '48px 20px',
@@ -235,7 +232,7 @@ export default function CustomersPage() {
                 width: 48,
                 height: 48,
                 borderRadius: 14,
-                background: 'var(--pri-m)',
+                background: '#F0F0F0',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
@@ -283,7 +280,7 @@ export default function CustomersPage() {
                 </tr>
               </thead>
               <tbody>
-                {data.map((c, i) => {
+                {displayData.map((c, i) => {
                   const pct = (c.totalCost / maxCost) * 100
                   const rank = i + 1
                   return (
@@ -300,8 +297,8 @@ export default function CustomersPage() {
                               width: 20,
                               height: 20,
                               borderRadius: '50%',
-                              background: rank === 1 ? '#FEF3C7' : 'var(--pri-m)',
-                              color: rank === 1 ? '#D97706' : 'var(--pri)',
+                              background: '#F0F0F0',
+                              color: '#6B7280',
                               display: 'flex',
                               alignItems: 'center',
                               justifyContent: 'center',

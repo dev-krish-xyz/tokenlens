@@ -20,11 +20,9 @@ const TABS = [
 const TH: React.CSSProperties = {
   padding: '9px 16px',
   textAlign: 'left',
-  fontSize: 10,
-  fontWeight: 500,
+  fontSize: 11,
+  fontWeight: 400,
   color: 'var(--t3)',
-  textTransform: 'uppercase',
-  letterSpacing: '0.05em',
   background: 'var(--bg)',
   borderBottom: '1px solid var(--border)',
 }
@@ -37,10 +35,10 @@ function fmtDay(iso: string) {
 
 function KpiCard({ label, value, delta, deltaColor }: { label: string; value: React.ReactNode; delta?: string; deltaColor?: string }) {
   return (
-    <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, padding: '16px 18px' }}>
-      <div style={{ fontSize: 11, color: 'var(--t3)', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6 }}>{label}</div>
-      <div style={{ fontSize: 20, fontWeight: 600, fontFamily: 'monospace', marginBottom: 3 }}>{value}</div>
-      {delta && <div style={{ fontSize: 11, color: deltaColor ?? 'var(--t3)' }}>{delta}</div>}
+    <div style={{ background: '#FFFFFF', border: '1px solid #E4E4E7', borderRadius: 12, padding: '16px 20px' }}>
+      <div style={{ fontSize: 11, color: '#9CA3AF', fontWeight: 400, marginBottom: 10 }}>{label}</div>
+      <div style={{ fontSize: 26, fontWeight: 600, color: '#0D0D0D', lineHeight: 1, letterSpacing: '-0.02em', marginBottom: 6 }}>{value}</div>
+      {delta && <div style={{ fontSize: 11, color: deltaColor ?? '#9CA3AF' }}>{delta}</div>}
     </div>
   )
 }
@@ -79,6 +77,25 @@ const EXAMPLE_TRACES = [
   },
 ]
 
+// ─── DEMO DATA — remove when real data flows ────────────────
+const DEMO_DAILY = Array.from({ length: 30 }, (_, i) => {
+  const d = new Date('2026-06-12')
+  d.setDate(d.getDate() - (29 - i))
+  const trend = 14 + i * 0.48
+  const wave = Math.sin(i * 0.71) * 4.2 + Math.cos(i * 1.3) * 2.1
+  const totalCost = parseFloat(Math.max(trend + wave, 4).toFixed(4))
+  return { day: d.toISOString().slice(0, 10), totalCost, requestCount: Math.round(totalCost * 39) }
+})
+const DEMO_TOP_MODELS = [
+  { model: 'gpt-4o', provider: 'openai', totalCost: 420.12, requestCount: 1840 },
+  { model: 'claude-3-5-sonnet-20241022', provider: 'anthropic', totalCost: 310.88, requestCount: 920 },
+  { model: 'gpt-4o-mini', provider: 'openai', totalCost: 180.44, requestCount: 4200 },
+  { model: 'claude-3-haiku-20240307', provider: 'anthropic', totalCost: 95.30, requestCount: 2100 },
+  { model: 'gemini-1.5-pro', provider: 'gemini', totalCost: 67.18, requestCount: 560 },
+]
+const DEMO_STATS = { totalCost: 1072.44, totalRequests: 9620, avgLatencyMs: 318, uniqueModels: 5 }
+// ────────────────────────────────────────────────────────────
+
 export default function AnalyticsPage() {
   const [days, setDays] = useQueryState('days', parseAsInteger.withDefault(7))
   const [tab, setTab] = useQueryState('tab', parseAsString.withDefault('usage'))
@@ -87,7 +104,11 @@ export default function AnalyticsPage() {
   const { data: daily = [], isLoading: dailyLoading } = trpc.cost.getDailySpend.useQuery({ days })
   const { data: topModels = [] } = trpc.cost.getTopModels.useQuery({ days })
 
-  const maxReqs = Math.max(...daily.map((d) => d.requestCount), 1)
+  const displayStats = (!statsLoading && !stats) ? DEMO_STATS : stats
+  const displayDaily = (!dailyLoading && daily.length === 0) ? DEMO_DAILY.slice(-days) : daily
+  const displayModels = topModels.length === 0 && !statsLoading ? DEMO_TOP_MODELS : topModels
+
+  const maxReqs = Math.max(...displayDaily.map((d) => d.requestCount), 1)
 
   return (
     <div style={{ padding: 24 }}>
@@ -113,7 +134,7 @@ export default function AnalyticsPage() {
           <button key={t.id} onClick={() => void setTab(t.id)}
             style={{ padding: '6px 14px', borderRadius: 7, fontSize: 12, fontWeight: 500, cursor: 'pointer', border: 'none', background: tab === t.id ? 'var(--surface)' : 'transparent', color: tab === t.id ? 'var(--t1)' : 'var(--t3)', boxShadow: tab === t.id ? '0 1px 4px rgba(0,0,0,.08)' : 'none', display: 'flex', alignItems: 'center', gap: 6 }}>
             {t.label}
-            {t.badge && <span style={{ fontSize: 10, background: 'var(--pri)', color: '#fff', padding: '1px 5px', borderRadius: 9999 }}>{t.badge}</span>}
+            {t.badge && <span style={{ fontSize: 10, color: '#C4C4C4', fontWeight: 400 }}>{t.badge}</span>}
           </button>
         ))}
       </div>
@@ -125,20 +146,14 @@ export default function AnalyticsPage() {
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5,1fr)', gap: 12, marginBottom: 20 }}>
             {statsLoading ? (
               Array.from({ length: 5 }).map((_, i) => (
-                <div key={i} style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, padding: '16px 18px', height: 88 }} />
+                <div key={i} style={{ background: '#FFFFFF', border: '1px solid #E4E4E7', borderRadius: 12, padding: '16px 20px', height: 88 }} />
               ))
             ) : (
               <>
-                <KpiCard label="Total Requests" value={(stats?.totalRequests ?? 0).toLocaleString()} delta={`↑ ${days}d`} deltaColor="var(--ok)" />
-                <KpiCard
-                  label="Total Tokens"
-                  // TODO: trpc.cost.getSummaryStats needs tokensIn + tokensOut fields added to ClickHouse query
-                  value="—"
-                  delta="TODO: add to getSummaryStats"
-                  deltaColor="var(--t3)"
-                />
-                <KpiCard label="Total Spend" value={`$${(stats?.totalCost ?? 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`} delta="↑ this period" deltaColor="var(--t3)" />
-                <KpiCard label="Avg Latency" value={`${Math.round(stats?.avgLatencyMs ?? 0)}ms`} delta="→ p50" deltaColor="var(--t3)" />
+                <KpiCard label="Total Requests" value={(displayStats?.totalRequests ?? 0).toLocaleString()} delta={`last ${days} days`} deltaColor="var(--ok)" />
+                <KpiCard label="Total Tokens" value="—" delta="coming soon" deltaColor="var(--t3)" />
+                <KpiCard label="Total Spend" value={`$${(displayStats?.totalCost ?? 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`} delta="this period" deltaColor="var(--t3)" />
+                <KpiCard label="Avg Latency" value={`${Math.round(displayStats?.avgLatencyMs ?? 0)}ms`} delta="p50 median" deltaColor="var(--t3)" />
                 <KpiCard
                   label="Error Rate"
                   // TODO: trpc.cost.getSummaryStats needs errorRate field (count of 4xx/5xx / total)
@@ -153,15 +168,13 @@ export default function AnalyticsPage() {
           {/* Charts */}
           <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 16, marginBottom: 20 }}>
             {/* Requests per day bar chart */}
-            <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, padding: 18 }}>
+            <div style={{ background: '#FFFFFF', border: '1px solid #E4E4E7', borderRadius: 12, padding: 18 }}>
               <div style={{ fontSize: 13, fontWeight: 500, marginBottom: 14 }}>Requests per Day</div>
               {dailyLoading ? (
                 <div style={{ height: 130, background: '#F5F5F5', borderRadius: 8 }} />
-              ) : daily.length === 0 ? (
-                <div style={{ height: 130, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, color: 'var(--t3)' }}>No data for this period</div>
               ) : (
                 <ResponsiveContainer width="100%" height={130}>
-                  <BarChart data={daily} margin={{ top: 4, right: 4, bottom: 0, left: 0 }}>
+                  <BarChart data={displayDaily} margin={{ top: 4, right: 4, bottom: 0, left: 0 }}>
                     <XAxis dataKey="day" tickFormatter={fmtDay} tick={{ fontSize: 9, fill: '#787585' }} axisLine={false} tickLine={false} />
                     <YAxis hide />
                     <Tooltip
@@ -169,21 +182,21 @@ export default function AnalyticsPage() {
                       formatter={(v: unknown) => [typeof v === 'number' ? v.toLocaleString() : String(v), 'Requests']}
                       labelFormatter={(label: unknown) => typeof label === 'string' ? fmtDay(label) : String(label)}
                     />
-                    <Bar dataKey="requestCount" fill="#5A4EC7" radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="requestCount" fill="#C7D2FE" radius={[3, 3, 0, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
               )}
             </div>
 
             {/* Token Mix */}
-            <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, padding: 18 }}>
+            <div style={{ background: '#FFFFFF', border: '1px solid #E4E4E7', borderRadius: 12, padding: 18 }}>
               <div style={{ fontSize: 13, fontWeight: 500, marginBottom: 12 }}>Token Mix</div>
               {/* TODO: trpc.cost.getTokenBreakdown.useQuery({ days }) — needs new ClickHouse query for input/output/cache token split */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 4 }}>
                 {[
-                  { label: 'Input tokens', val: '—', pct: 65, color: '#5A4EC7' },
-                  { label: 'Output tokens', val: '—', pct: 30, color: '#B39DDB' },
-                  { label: 'Cache read', val: '—', pct: 5, color: '#D4CBFF' },
+                  { label: 'Input tokens', val: '—', pct: 65, color: '#6366F1' },
+                  { label: 'Output tokens', val: '—', pct: 30, color: '#A5B4FC' },
+                  { label: 'Cache read', val: '—', pct: 5, color: '#E0E7FF' },
                 ].map((row) => (
                   <div key={row.label}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4, fontSize: 12 }}>
@@ -204,15 +217,12 @@ export default function AnalyticsPage() {
           </div>
 
           {/* Top Models table */}
-          <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, overflow: 'hidden' }}>
+          <div style={{ background: '#FFFFFF', border: '1px solid #E4E4E7', borderRadius: 12, overflow: 'hidden' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 18px', borderBottom: '1px solid var(--border)' }}>
               <div style={{ fontSize: 13, fontWeight: 500 }}>Top Models</div>
               <span style={{ fontSize: 12, color: 'var(--t3)' }}>last {days} days</span>
             </div>
-            {topModels.length === 0 ? (
-              <div style={{ padding: '32px 20px', textAlign: 'center', fontSize: 12, color: 'var(--t3)' }}>No model data yet</div>
-            ) : (
-              <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                 <thead>
                   <tr>
                     {['Model', 'Provider', 'Requests', 'Total Spend', 'Spend Share'].map((h) => (
@@ -221,13 +231,13 @@ export default function AnalyticsPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {topModels.map((m) => {
-                    const maxCost = Math.max(...topModels.map((x) => x.totalCost), 1)
+                  {displayModels.map((m) => {
+                    const maxCost = Math.max(...displayModels.map((x) => x.totalCost), 1)
                     return (
                       <tr key={m.model} onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--bg)' }} onMouseLeave={(e) => { e.currentTarget.style.background = '' }}>
                         <td style={{ padding: '11px 16px', fontSize: 11, fontFamily: 'monospace', borderBottom: '1px solid var(--border)' }}>{m.model}</td>
                         <td style={{ padding: '11px 16px', fontSize: 12, borderBottom: '1px solid var(--border)' }}>
-                          <span style={{ display: 'inline-flex', padding: '2px 8px', borderRadius: 9999, fontSize: 10, fontWeight: 500, background: '#EDE9FF', color: 'var(--pri)' }}>{m.provider}</span>
+                          <span style={{ fontSize: 11, color: 'var(--t2)', fontWeight: 400 }}>{m.provider}</span>
                         </td>
                         <td style={{ padding: '11px 16px', fontSize: 12, fontFamily: 'monospace', borderBottom: '1px solid var(--border)' }}>{m.requestCount.toLocaleString()}</td>
                         <td style={{ padding: '11px 16px', fontSize: 12, fontFamily: 'monospace', borderBottom: '1px solid var(--border)' }}>${m.totalCost.toFixed(4)}</td>
@@ -237,7 +247,7 @@ export default function AnalyticsPage() {
                               <div style={{ height: '100%', borderRadius: 9999, background: 'var(--pri)', width: `${(m.totalCost / maxCost) * 100}%` }} />
                             </div>
                             <span style={{ fontSize: 11, fontFamily: 'monospace', color: 'var(--t3)' }}>
-                              {Math.round((m.totalCost / topModels.reduce((s, x) => s + x.totalCost, 0)) * 100)}%
+                              {Math.round((m.totalCost / displayModels.reduce((s, x) => s + x.totalCost, 0)) * 100)}%
                             </span>
                           </div>
                         </td>
@@ -246,14 +256,13 @@ export default function AnalyticsPage() {
                   })}
                 </tbody>
               </table>
-            )}
           </div>
         </div>
       )}
 
       {/* ── Request Logs redirect notice ── */}
       {tab === 'logs' && (
-        <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, padding: '48px 20px', textAlign: 'center' }}>
+        <div style={{ background: '#FFFFFF', border: '1px solid #E4E4E7', borderRadius: 12, padding: '48px 20px', textAlign: 'center' }}>
           <div style={{ fontSize: 13, fontWeight: 500, marginBottom: 8 }}>Request Logs are in their own page</div>
           <div style={{ fontSize: 12, color: 'var(--t3)', marginBottom: 20 }}>Full filtering, pagination, and export available there.</div>
           <a href="/dashboard/logs" style={{ padding: '9px 24px', borderRadius: 8, background: 'var(--pri)', color: '#fff', fontSize: 12, fontWeight: 500, textDecoration: 'none', display: 'inline-block' }}>
@@ -265,22 +274,21 @@ export default function AnalyticsPage() {
       {/* ── Traces tab ── */}
       {tab === 'traces' && (
         <div>
-          <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, overflow: 'hidden' }}>
+          <div style={{ background: '#FFFFFF', border: '1px solid #E4E4E7', borderRadius: 12, overflow: 'hidden' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 18px', borderBottom: '1px solid var(--border)' }}>
               <div style={{ fontSize: 13, fontWeight: 500 }}>Traces</div>
-              <span style={{ fontSize: 11, background: 'var(--pri-m)', color: 'var(--pri)', padding: '2px 8px', borderRadius: 9999, fontWeight: 500 }}>Beta</span>
+              <span style={{ fontSize: 11, color: '#C4C4C4', fontWeight: 400 }}>Beta</span>
             </div>
             {/* TODO: trpc.traces.list.useQuery({ days }) — when traces router is built, replace static data below */}
             <div style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: 10 }}>
               {EXAMPLE_TRACES.map((trace) => (
-                <div key={trace.id} style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, padding: '14px 16px' }}>
+                <div key={trace.id} style={{ background: 'var(--surface)', border: '1px solid #E4E4E7', borderRadius: 10, padding: '14px 16px' }}>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                       <span style={{ fontFamily: 'monospace', fontSize: 12, fontWeight: 500 }}>{trace.id}</span>
                       <span style={{
-                        display: 'inline-flex', padding: '2px 8px', borderRadius: 9999, fontSize: 10, fontWeight: 500,
-                        background: trace.status === 'OK' ? '#DCFCE7' : '#FEF2F2',
-                        color: trace.status === 'OK' ? '#16A34A' : '#BA1A1A',
+                        fontSize: 11, fontWeight: 500,
+                        color: trace.status === 'OK' ? '#10B981' : '#EF4444',
                       }}>
                         {trace.status}
                       </span>

@@ -6,10 +6,10 @@ import { useState } from 'react'
 
 function KpiCard({ label, value, delta, deltaColor }: { label: string; value: React.ReactNode; delta?: string; deltaColor?: string }) {
   return (
-    <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, padding: '16px 18px' }}>
-      <div style={{ fontSize: 11, color: 'var(--t3)', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6 }}>{label}</div>
-      <div style={{ fontSize: 20, fontWeight: 600, fontFamily: 'monospace', marginBottom: 3 }}>{value}</div>
-      {delta && <div style={{ fontSize: 11, color: deltaColor ?? 'var(--t3)' }}>{delta}</div>}
+    <div style={{ background: 'var(--surface)', borderRadius: 12, padding: '16px 20px' }}>
+      <div style={{ fontSize: 11, color: '#9CA3AF', fontWeight: 400, marginBottom: 10 }}>{label}</div>
+      <div style={{ fontSize: 26, fontWeight: 600, color: '#0D0D0D', lineHeight: 1, letterSpacing: '-0.02em', marginBottom: 6 }}>{value}</div>
+      {delta && <div style={{ fontSize: 11, color: deltaColor ?? '#9CA3AF' }}>{delta}</div>}
     </div>
   )
 }
@@ -42,11 +42,11 @@ export default function CachePage() {
         <KpiCard label="Cache Hit Rate" value="18.4%" delta="↑ 3pp WoW" deltaColor="var(--ok)" />
         <KpiCard label="Tokens Saved" value="2.2M" delta="This month" />
         <KpiCard label="Cost Saved" value="$47" delta="From cache hits" deltaColor="var(--ok)" />
-        <KpiCard label="DragonflyDB" value={<span style={{ color: '#16A34A', fontSize: 14 }}>● Connected</span>} delta="12.4MB used" />
+        <KpiCard label="DragonflyDB" value={<span style={{ color: '#10B981', fontSize: 22, fontWeight: 600, letterSpacing: '-0.02em' }}>Connected</span>} delta="12.4MB used" />
       </div>
 
       {/* Cache key registry */}
-      <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, padding: 18, marginBottom: 16 }}>
+      <div style={{ background: 'var(--surface)', borderRadius: 12, padding: 18, marginBottom: 16 }}>
         <div style={{ fontSize: 13, fontWeight: 500, marginBottom: 14 }}>Cache Key Registry</div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           {[
@@ -61,14 +61,14 @@ export default function CachePage() {
             <div key={row.key} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '8px 12px', background: 'var(--bg)', borderRadius: 8 }}>
               <code style={{ fontFamily: 'monospace', fontSize: 11, color: 'var(--pri)', flex: 1 }}>{row.key}</code>
               <span style={{ fontSize: 11, color: 'var(--t3)', flex: 1 }}>{row.desc}</span>
-              <span style={{ fontSize: 11, fontFamily: 'monospace', background: 'var(--pri-m)', color: 'var(--pri)', padding: '2px 8px', borderRadius: 9999, flexShrink: 0 }}>TTL {row.ttl}</span>
+              <span style={{ fontSize: 11, fontFamily: 'monospace', color: '#9CA3AF', flexShrink: 0 }}>TTL {row.ttl}</span>
             </div>
           ))}
         </div>
       </div>
 
       {/* Cache Strategy */}
-      <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, padding: 18 }}>
+      <div style={{ background: 'var(--surface)', borderRadius: 12, padding: 18 }}>
         <div style={{ fontSize: 13, fontWeight: 500, marginBottom: 14 }}>Cache Strategy</div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>

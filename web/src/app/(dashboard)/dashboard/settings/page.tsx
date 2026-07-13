@@ -17,17 +17,17 @@ function initials(name: string | null | undefined, email: string): string {
 }
 
 const AVATAR_COLORS: { bg: string; color: string }[] = [
-  { bg: '#EDE9FF', color: '#5A4EC7' },
-  { bg: '#F0FDF4', color: '#16A34A' },
-  { bg: '#FFF7ED', color: '#D97706' },
-  { bg: '#EFF6FF', color: '#0369A1' },
-  { bg: '#FEF2F2', color: '#BA1A1A' },
+  { bg: '#F0F0F0', color: '#6B7280' },
+  { bg: '#E8E8E8', color: '#6B7280' },
+  { bg: '#EBEBEB', color: '#6B7280' },
+  { bg: '#EDEDED', color: '#6B7280' },
+  { bg: '#F2F2F2', color: '#6B7280' },
 ]
 
-function roleChip(role: string): { bg: string; color: string } {
-  if (role === 'admin') return { bg: '#EDE9FF', color: '#5A4EC7' }
-  if (role === 'member') return { bg: '#E0F2FE', color: '#0369A1' }
-  return { bg: '#F4F4F5', color: '#474553' }
+function roleChip(role: string): { color: string } {
+  if (role === 'admin') return { color: '#6366F1' }
+  if (role === 'member') return { color: '#6B7280' }
+  return { color: '#9CA3AF' }
 }
 
 const labelStyle: React.CSSProperties = {
@@ -206,8 +206,7 @@ export default function SettingsPage() {
         <div
           style={{
             background: 'var(--surface)',
-            border: '1px solid var(--border)',
-            borderRadius: 14,
+            borderRadius: 12,
             padding: 18,
             maxWidth: 600,
             display: 'flex',
@@ -359,8 +358,7 @@ export default function SettingsPage() {
         <div
           style={{
             background: 'var(--surface)',
-            border: '1px solid var(--border)',
-            borderRadius: 14,
+            borderRadius: 12,
             overflow: 'hidden',
           }}
         >
@@ -441,11 +439,9 @@ export default function SettingsPage() {
                       style={{
                         padding: '9px 16px',
                         textAlign: 'left',
-                        fontSize: 10,
-                        fontWeight: 500,
+                        fontSize: 11,
+                        fontWeight: 400,
                         color: 'var(--t3)',
-                        textTransform: 'uppercase',
-                        letterSpacing: '0.05em',
                         background: 'var(--bg)',
                         borderBottom: '1px solid var(--border)',
                       }}
@@ -496,18 +492,7 @@ export default function SettingsPage() {
                       </td>
                       <td style={{ padding: '11px 16px' }}>
                         {isAdmin ? (
-                          <span
-                            style={{
-                              display: 'inline-flex',
-                              alignItems: 'center',
-                              padding: '2px 8px',
-                              borderRadius: 9999,
-                              fontSize: 10,
-                              fontWeight: 500,
-                              background: chip.bg,
-                              color: chip.color,
-                            }}
-                          >
+                          <span style={{ fontSize: 11, fontWeight: 500, color: chip.color }}>
                             {member.role}
                           </span>
                         ) : (
@@ -551,14 +536,9 @@ export default function SettingsPage() {
                       <td style={{ padding: '11px 16px' }}>
                         <span
                           style={{
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            padding: '2px 8px',
-                            borderRadius: 9999,
-                            fontSize: 10,
+                            fontSize: 11,
                             fontWeight: 500,
-                            background: '#DCFCE7',
-                            color: '#16A34A',
+                            color: '#10B981',
                           }}
                         >
                           Active
@@ -602,10 +582,9 @@ export default function SettingsPage() {
               style={{
                 padding: '11px 16px',
                 borderRadius: 10,
-                background: '#DCFCE7',
-                border: '1px solid #86EFAC',
+                background: '#F0FDF4',
                 fontSize: 12,
-                color: '#16A34A',
+                color: '#10B981',
                 marginBottom: 16,
               }}
             >
@@ -675,11 +654,9 @@ export default function SettingsPage() {
                         style={{
                           padding: '9px 16px',
                           textAlign: 'left',
-                          fontSize: 10,
-                          fontWeight: 500,
+                          fontSize: 11,
+                          fontWeight: 400,
                           color: 'var(--t3)',
-                          textTransform: 'uppercase',
-                          letterSpacing: '0.05em',
                           background: 'var(--bg)',
                           borderBottom: '1px solid var(--border)',
                         }}
@@ -701,18 +678,7 @@ export default function SettingsPage() {
                       >
                         <td style={{ padding: '11px 16px', fontSize: 12 }}>{invite.email}</td>
                         <td style={{ padding: '11px 16px' }}>
-                          <span
-                            style={{
-                              display: 'inline-flex',
-                              alignItems: 'center',
-                              padding: '2px 8px',
-                              borderRadius: 9999,
-                              fontSize: 10,
-                              fontWeight: 500,
-                              background: chip.bg,
-                              color: chip.color,
-                            }}
-                          >
+                          <span style={{ fontSize: 11, fontWeight: 500, color: chip.color }}>
                             {invite.role}
                           </span>
                         </td>
@@ -813,7 +779,6 @@ export default function SettingsPage() {
                     padding: '10px 14px',
                     borderRadius: 8,
                     background: '#FEF2F2',
-                    border: '1px solid #FCA5A5',
                     fontSize: 12,
                     color: 'var(--err)',
                   }}
@@ -955,7 +920,7 @@ export default function SettingsPage() {
 
       {/* ── API & Gateway tab ── */}
       {tab === 'api' && (
-        <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, padding: 18, maxWidth: 600, display: 'flex', flexDirection: 'column', gap: 18 }}>
+        <div style={{ background: 'var(--surface)', borderRadius: 12, padding: 18, maxWidth: 600, display: 'flex', flexDirection: 'column', gap: 18 }}>
           <div>
             <div style={{ fontSize: 12, fontWeight: 500, color: 'var(--t2)', marginBottom: 8 }}>Gateway Endpoint</div>
             <div style={{ fontFamily: 'monospace', fontSize: 12, background: '#F5F5F5', padding: '10px 12px', borderRadius: 8, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -1001,7 +966,7 @@ export default function SettingsPage() {
 
       {/* ── Notifications tab ── */}
       {tab === 'notifications' && (
-        <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, padding: 18, maxWidth: 600, display: 'flex', flexDirection: 'column', gap: 16 }}>
+        <div style={{ background: 'var(--surface)', borderRadius: 12, padding: 18, maxWidth: 600, display: 'flex', flexDirection: 'column', gap: 16 }}>
           {/* TODO: trpc.notifications.getPrefs.useQuery() and trpc.notifications.savePrefs.useMutation() */}
           {[
             { label: 'Budget warnings (80%)', sub: 'Email + in-app toast', defaultOn: true },
@@ -1037,7 +1002,7 @@ export default function SettingsPage() {
 
       {/* ── Security tab ── */}
       {tab === 'security' && (
-        <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, padding: 18, maxWidth: 600, display: 'flex', flexDirection: 'column', gap: 16 }}>
+        <div style={{ background: 'var(--surface)', borderRadius: 12, padding: 18, maxWidth: 600, display: 'flex', flexDirection: 'column', gap: 16 }}>
           {/* TODO: trpc.security.getSettings.useQuery() and trpc.security.update*.useMutation() */}
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <div>
@@ -1056,7 +1021,7 @@ export default function SettingsPage() {
               <div style={{ fontSize: 13, fontWeight: 500 }}>SSO / SAML</div>
               <div style={{ fontSize: 11, color: 'var(--t3)' }}>Single sign-on via your identity provider</div>
             </div>
-            <span style={{ fontSize: 11, background: 'var(--pri-m)', color: 'var(--pri)', padding: '2px 8px', borderRadius: 9999, fontWeight: 500 }}>Scale plan</span>
+            <span style={{ fontSize: 11, color: '#9CA3AF', fontWeight: 400 }}>Scale plan</span>
           </div>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <div>
@@ -1089,7 +1054,7 @@ export default function SettingsPage() {
 
       {/* ── Danger Zone tab ── */}
       {tab === 'danger' && (
-        <div style={{ background: 'var(--surface)', border: '1px solid #FCA5A5', borderRadius: 14, padding: 18, maxWidth: 600, display: 'flex', flexDirection: 'column', gap: 16 }}>
+        <div style={{ background: 'var(--surface)', borderRadius: 12, padding: 18, maxWidth: 600, display: 'flex', flexDirection: 'column', gap: 16 }}>
           <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, paddingBottom: 16, borderBottom: '1px solid #FCA5A5' }}>
             <span style={{ fontSize: 20, flexShrink: 0, marginTop: 2 }}>⚠️</span>
             <div>

@@ -227,8 +227,7 @@ export default function KeysPage() {
         <div
           style={{
             background: 'var(--surface)',
-            border: '1px solid var(--border)',
-            borderRadius: 14,
+            borderRadius: 12,
             padding: 32,
           }}
         >
@@ -250,8 +249,7 @@ export default function KeysPage() {
         <div
           style={{
             background: 'var(--surface)',
-            border: '1px solid var(--border)',
-            borderRadius: 14,
+            borderRadius: 12,
             padding: '48px 20px',
             display: 'flex',
             flexDirection: 'column',
@@ -305,8 +303,7 @@ export default function KeysPage() {
         <div
           style={{
             background: 'var(--surface)',
-            border: '1px solid var(--border)',
-            borderRadius: 14,
+            borderRadius: 12,
             overflow: 'hidden',
           }}
         >
@@ -331,11 +328,9 @@ export default function KeysPage() {
                     style={{
                       padding: '9px 16px',
                       textAlign: 'left',
-                      fontSize: 10,
-                      fontWeight: 500,
+                      fontSize: 11,
+                      fontWeight: 400,
                       color: 'var(--t3)',
-                      textTransform: 'uppercase',
-                      letterSpacing: '0.05em',
                       background: 'var(--bg)',
                       borderBottom: '1px solid var(--border)',
                     }}
@@ -347,12 +342,12 @@ export default function KeysPage() {
             </thead>
             <tbody>
               {keys.map((key) => {
-                const providerColors: Record<string, { bg: string; color: string }> = {
-                  openai: { bg: '#E0F2FE', color: '#0369A1' },
-                  anthropic: { bg: '#FFF7ED', color: '#C2410C' },
-                  gemini: { bg: '#F0FDF4', color: '#16A34A' },
+                const providerColors: Record<string, { color: string }> = {
+                  openai: { color: '#6B7280' },
+                  anthropic: { color: '#6B7280' },
+                  gemini: { color: '#6B7280' },
                 }
-                const pc = providerColors[key.provider] ?? { bg: '#F5F5F5', color: 'var(--t2)' }
+                const pc = providerColors[key.provider] ?? { color: 'var(--t2)' }
                 return (
                   <tr
                     key={key.id}
@@ -374,18 +369,7 @@ export default function KeysPage() {
                       </div>
                     </td>
                     <td style={{ padding: '11px 16px' }}>
-                      <span
-                        style={{
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          padding: '2px 8px',
-                          borderRadius: 9999,
-                          fontSize: 10,
-                          fontWeight: 500,
-                          background: pc.bg,
-                          color: pc.color,
-                        }}
-                      >
+                      <span style={{ fontSize: 11, color: pc.color, fontWeight: 400 }}>
                         {key.provider}
                       </span>
                     </td>

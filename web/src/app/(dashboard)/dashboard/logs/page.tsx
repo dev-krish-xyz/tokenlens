@@ -22,10 +22,10 @@ function formatRelative(dateStr: string): string {
   return `${Math.floor(diffHour / 24)}d ago`
 }
 
-function statusChip(code: number): { bg: string; color: string } {
-  if (code >= 500) return { bg: '#FEF2F2', color: '#BA1A1A' }
-  if (code >= 400) return { bg: '#FEF3C7', color: '#D97706' }
-  return { bg: '#DCFCE7', color: '#16A34A' }
+function statusChip(code: number): { color: string } {
+  if (code >= 500) return { color: '#EF4444' }
+  if (code >= 400) return { color: '#F59E0B' }
+  return { color: '#10B981' }
 }
 
 const DATE_OPTIONS = [
@@ -39,11 +39,9 @@ const LIMIT = 50
 const TH_STYLE: React.CSSProperties = {
   padding: '9px 16px',
   textAlign: 'left',
-  fontSize: 10,
-  fontWeight: 500,
+  fontSize: 11,
+  fontWeight: 400,
   color: 'var(--t3)',
-  textTransform: 'uppercase',
-  letterSpacing: '0.05em',
   background: 'var(--bg)',
   borderBottom: '1px solid var(--border)',
   whiteSpace: 'nowrap',
@@ -132,8 +130,7 @@ export default function LogsPage() {
       <div
         style={{
           background: 'var(--surface)',
-          border: '1px solid var(--border)',
-          borderRadius: 14,
+          borderRadius: 12,
           overflow: 'hidden',
           marginBottom: 16,
         }}
@@ -370,14 +367,10 @@ export default function LogsPage() {
                       <td style={TD_STYLE}>
                         <span
                           style={{
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            padding: '2px 8px',
-                            borderRadius: 9999,
-                            fontSize: 10,
+                            fontSize: 11,
                             fontWeight: 500,
-                            background: sc.bg,
                             color: sc.color,
+                            fontFamily: 'monospace',
                           }}
                         >
                           {row.statusCode}

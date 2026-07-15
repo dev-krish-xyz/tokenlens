@@ -22,7 +22,18 @@ export async function createContext(): Promise<Context> {
   return { session, workspaceId: workspace?.id ?? null, userRole }
 }
 
-const t = initTRPC.context<Context>().create()
+// Mask internals: unknown errors surface as INTERNAL_SERVER_ERROR with the
+// original message attached by tRPC — strip it (and the stack) so repository
+// or driver errors never reach the client.
+const t = initTRPC.context<Context>().create({
+  errorFormatter({ shape, error }) {
+    const data = { ...shape.data, stack: undefined }
+    if (error.code === 'INTERNAL_SERVER_ERROR') {
+      return { ...shape, message: 'Internal server error', data }
+    }
+    return { ...shape, data }
+  },
+})
 
 export const router = t.router
 export const publicProcedure = t.procedure

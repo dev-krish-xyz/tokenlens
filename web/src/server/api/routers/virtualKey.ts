@@ -1,17 +1,17 @@
 import { z } from 'zod'
 import { TRPCError } from '@trpc/server'
-import { protectedWorkspaceProcedure, protectedMemberProcedure, router } from '../trpc.ts'
+import { protectedWorkspaceProcedure, protectedAdminProcedure, router } from '../trpc.ts'
 import { encrypt } from '@tokenlens/shared/keyVault'
 import { findByWorkspace, create, softDelete, updateBudget } from '@tokenlens/shared/virtualKeyRepo'
 
 export const virtualKeyRouter = router({
-  create: protectedMemberProcedure
+  create: protectedAdminProcedure
     .input(
       z.object({
         name: z.string().min(1).max(100),
         provider: z.enum(['openai', 'anthropic', 'gemini']),
-        realApiKey: z.string().min(1),
-        budgetCap: z.number().positive().optional(),
+        realApiKey: z.string().min(1).max(500),
+        budgetCap: z.number().positive().max(1_000_000).optional(),
       })
     )
     .mutation(async ({ ctx, input }) => {
@@ -38,18 +38,19 @@ export const virtualKeyRouter = router({
     findByWorkspace(ctx.workspaceId)
   ),
 
-  delete: protectedMemberProcedure
-    .input(z.object({ id: z.string() }))
+  delete: protectedAdminProcedure
+    .input(z.object({ id: z.string().uuid() }))
     .mutation(async ({ ctx, input }) => {
       await softDelete(input.id, ctx.workspaceId)
       return { success: true as const }
     }),
 
-  updateBudget: protectedMemberProcedure
+  // Admin-only: relaxing or clearing a key's cap disables budgetEnforcer for it.
+  updateBudget: protectedAdminProcedure
     .input(
       z.object({
-        id: z.string(),
-        budgetCap: z.number().positive().nullable(),
+        id: z.string().uuid(),
+        budgetCap: z.number().positive().max(1_000_000).nullable(),
       })
     )
     .mutation(async ({ ctx, input }) => {

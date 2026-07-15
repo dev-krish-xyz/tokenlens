@@ -2,6 +2,7 @@ import { eq, and } from 'drizzle-orm'
 import { db } from '../client.ts'
 import { workspace_members, users } from '../schema.ts'
 import type { WorkspaceRole } from '../../types.ts'
+import { ValidationError } from '../../errors.ts'
 
 export async function getRoleForUser(
   workspaceId: string,
@@ -53,7 +54,7 @@ export async function updateRole(
   requestingUserId: string
 ): Promise<void> {
   if (targetUserId === requestingUserId) {
-    throw new Error('Cannot change your own role')
+    throw new ValidationError('Cannot change your own role')
   }
   await db
     .update(workspace_members)
@@ -67,7 +68,7 @@ export async function removeMember(
   requestingUserId: string
 ): Promise<void> {
   if (targetUserId === requestingUserId) {
-    throw new Error('Cannot remove yourself from workspace')
+    throw new ValidationError('Cannot remove yourself from workspace')
   }
   await db
     .delete(workspace_members)

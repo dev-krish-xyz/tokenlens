@@ -2,6 +2,7 @@ import { eq, and, desc } from 'drizzle-orm'
 import { db } from '../client.ts'
 import { virtual_keys } from '../schema.ts'
 import type { VirtualKey, NewVirtualKey } from '../schema.ts'
+import { AppError } from '../../errors.ts'
 
 type SafeVirtualKey = Omit<VirtualKey, 'encrypted_key'>
 
@@ -25,7 +26,7 @@ export async function findByWorkspace(workspaceId: string): Promise<SafeVirtualK
 export async function create(data: NewVirtualKey): Promise<VirtualKey> {
   const rows = await db.insert(virtual_keys).values(data).returning()
   const row = rows[0]
-  if (row === undefined) throw new Error('Insert returned no rows')
+  if (row === undefined) throw new AppError('Insert returned no rows', 'DB_ERROR', 500)
   return row
 }
 

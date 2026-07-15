@@ -27,7 +27,7 @@ export const alertConfigRouter = router({
   updateAlertConfig: protectedAdminProcedure
     .input(
       z.object({
-        id: z.string(),
+        id: z.string().uuid(),
         channel: z.string().min(1).max(500).optional(),
         thresholdPct: z.number().int().min(1).max(100).optional(),
         cooldownMin: z.number().int().min(5).max(1440).optional(),
@@ -44,7 +44,7 @@ export const alertConfigRouter = router({
     }),
 
   deleteAlertConfig: protectedAdminProcedure
-    .input(z.object({ id: z.string() }))
+    .input(z.object({ id: z.string().uuid() }))
     .mutation(({ ctx, input }) =>
       alertConfigRepo.deleteConfig(input.id, ctx.workspaceId)
     ),

@@ -2,6 +2,7 @@ import { eq, and, asc } from 'drizzle-orm'
 import { db } from '../client.ts'
 import { alert_configs } from '../schema.ts'
 import type { AlertConfig } from '../schema.ts'
+import { AppError, ValidationError } from '../../errors.ts'
 
 export async function listByWorkspace(workspaceId: string): Promise<AlertConfig[]> {
   return db
@@ -27,7 +28,7 @@ export async function create(data: {
       is_active: true,
     })
     .returning()
-  if (!row) throw new Error('Alert config insert returned no rows')
+  if (!row) throw new AppError('Alert config insert returned no rows', 'DB_ERROR', 500)
   return row
 }
 
@@ -52,7 +53,7 @@ export async function update(
     .set(setValues)
     .where(and(eq(alert_configs.id, id), eq(alert_configs.workspace_id, workspaceId)))
     .returning()
-  if (!row) throw new Error('Alert config not found or not owned by workspace')
+  if (!row) throw new ValidationError('Alert config not found')
   return row
 }
 

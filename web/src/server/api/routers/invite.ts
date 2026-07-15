@@ -11,17 +11,19 @@ export const inviteRouter = router({
   sendInvite: protectedAdminProcedure
     .input(
       z.object({
-        email: z.string().email(),
+        // Normalize case so the self-invite / duplicate / existing-member checks
+        // can't be bypassed with a case variant of the same address.
+        email: z.string().email().max(254).transform((e) => e.toLowerCase()),
         role: z.enum(['member', 'viewer']).default('member'),
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      if (input.email === ctx.session.user.email) {
+      if (input.email === ctx.session.user.email.toLowerCase()) {
         throw new TRPCError({ code: 'BAD_REQUEST', message: 'Cannot invite yourself' })
       }
 
       const pending = await inviteRepo.listPending(ctx.workspaceId)
-      if (pending.some((i) => i.email === input.email)) {
+      if (pending.some((i) => i.email.toLowerCase() === input.email)) {
         throw new TRPCError({ code: 'CONFLICT', message: 'Invite already sent to this email' })
       }
 
@@ -63,6 +65,6 @@ export const inviteRouter = router({
   ),
 
   revokeInvite: protectedAdminProcedure
-    .input(z.object({ id: z.string() }))
+    .input(z.object({ id: z.string().uuid() }))
     .mutation(({ ctx, input }) => inviteRepo.revoke(input.id, ctx.workspaceId)),
 })

@@ -15,6 +15,7 @@
     "./workspaceMemberRepo": "./src/db/repositories/workspaceMemberRepo.ts",
     "./clickhouse/queries": "./src/clickhouse/queries.ts",
     "./services/budgetService": "./src/services/budgetService.ts",
+    "./services/budgetStatusService": "./src/services/budgetStatusService.ts",
     "./alertConfigRepo": "./src/db/repositories/alertConfigRepo.ts",
     "./inviteRepo": "./src/db/repositories/inviteRepo.ts",
     "./services/planService": "./src/services/planService.ts",

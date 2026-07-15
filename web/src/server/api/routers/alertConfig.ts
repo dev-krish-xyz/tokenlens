@@ -1,6 +1,29 @@
 import { z } from 'zod'
 import { protectedMemberProcedure, protectedAdminProcedure, router } from '../trpc.ts'
 import * as alertConfigRepo from '@tokenlens/shared/alertConfigRepo'
+import { isForbiddenLiteralHost } from '@tokenlens/shared/services/ssrfGuard'
+
+// Channel is an email or an https webhook. Literal private hosts are rejected
+// here for fast feedback; the worker re-checks with DNS resolution at send time.
+const channelSchema = z
+  .string()
+  .min(1)
+  .max(500)
+  .superRefine((val, ctx) => {
+    if (val.startsWith('http://')) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Webhook URLs must use https://' })
+      return
+    }
+    if (!val.startsWith('https://')) return
+    try {
+      const url = new URL(val)
+      if (isForbiddenLiteralHost(url.hostname)) {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Webhook host is not allowed' })
+      }
+    } catch {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Invalid webhook URL' })
+    }
+  })
 
 export const alertConfigRouter = router({
   listAlertConfigs: protectedMemberProcedure.query(({ ctx }) =>
@@ -10,7 +33,7 @@ export const alertConfigRouter = router({
   createAlertConfig: protectedAdminProcedure
     .input(
       z.object({
-        channel: z.string().min(1).max(500),
+        channel: channelSchema,
         thresholdPct: z.number().int().min(1).max(100).default(80),
         cooldownMin: z.number().int().min(5).max(1440).default(60),
       })
@@ -28,7 +51,7 @@ export const alertConfigRouter = router({
     .input(
       z.object({
         id: z.string().uuid(),
-        channel: z.string().min(1).max(500).optional(),
+        channel: channelSchema.optional(),
         thresholdPct: z.number().int().min(1).max(100).optional(),
         cooldownMin: z.number().int().min(5).max(1440).optional(),
         isActive: z.boolean().optional(),

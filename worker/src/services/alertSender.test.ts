@@ -23,6 +23,17 @@ mock.module('@tokenlens/shared', () => ({
   calculateCost: mock(() => 0),
 }))
 
+// Guard is unit-tested in shared; stub it here so webhook tests need no DNS.
+// All exports included to prevent cross-file poisoning.
+let guardShouldReject = false
+mock.module('@tokenlens/shared/services/ssrfGuard', () => ({
+  assertPublicHttpsUrl: mock(async () => {
+    if (guardShouldReject) throw new Error('URL resolves to a non-public address')
+  }),
+  isForbiddenLiteralHost: () => false,
+  isPrivateIp: () => false,
+}))
+
 const { sendAlert, maybeFireAlert } = await import('./alertSender.ts')
 
 const BASE_PAYLOAD = {
@@ -39,6 +50,7 @@ beforeEach(() => {
   fetchCalls = []
   fetchShouldThrow = false
   fetchStatus = 200
+  guardShouldReject = false
   mockDragonflyGet.mockClear()
   mockDragonflySetex.mockClear()
   mockDragonflyGet.mockImplementation(async () => null)
@@ -79,6 +91,12 @@ describe('sendAlert', () => {
     await sendAlert('https://hooks.example.com/alert', BASE_PAYLOAD)
     const headers = fetchCalls[0]?.init?.headers as Record<string, string>
     expect(headers?.['X-TokenLens-Event']).toBe('budget.alert')
+  })
+
+  test('webhook rejected by SSRF guard is never fetched', async () => {
+    guardShouldReject = true
+    await sendAlert('https://internal.example.com/hook', BASE_PAYLOAD)
+    expect(fetchCalls).toHaveLength(0)
   })
 
   test('sendAlert fetch failure does not throw', async () => {

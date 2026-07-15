@@ -16,6 +16,7 @@
     "./clickhouse/queries": "./src/clickhouse/queries.ts",
     "./services/budgetService": "./src/services/budgetService.ts",
     "./services/budgetStatusService": "./src/services/budgetStatusService.ts",
+    "./services/ssrfGuard": "./src/services/ssrfGuard.ts",
     "./alertConfigRepo": "./src/db/repositories/alertConfigRepo.ts",
     "./inviteRepo": "./src/db/repositories/inviteRepo.ts",
     "./services/planService": "./src/services/planService.ts",

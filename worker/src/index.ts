@@ -1,7 +1,7 @@
 import { Worker } from 'bullmq'
 import { dragonflyClientForBullMQ } from '@tokenlens/shared'
 import { clickhouseWriter } from '@tokenlens/shared/clickhouse/writer'
-import { anomalyQueue } from '@tokenlens/shared/queues/definitions'
+import { anomalyQueue, alertQueue } from '@tokenlens/shared/queues/definitions'
 import { processIngestionJob } from './queues/ingestionProcessor.ts'
 import { processAlertJob } from './queues/alertProcessor.ts'
 import { processAnomalyCheck } from './queues/anomalyProcessor.ts'
@@ -36,8 +36,14 @@ anomalyWorker.on('failed', (job, err) =>
 
 await anomalyQueue.add(
   'check-all',
-  { virtualKeyId: '_', workspaceId: '_' },
+  { scope: 'all' },
   { jobId: 'anomaly-recurring', repeat: { every: 300_000 } },
+)
+
+await alertQueue.add(
+  'budget-sweep',
+  { type: 'budget_sweep' },
+  { jobId: 'budget-recurring', repeat: { every: 300_000 } },
 )
 
 process.on('SIGTERM', async () => {

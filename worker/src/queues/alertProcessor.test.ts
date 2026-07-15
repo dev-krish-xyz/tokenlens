@@ -48,9 +48,18 @@ mock.module('@tokenlens/shared/virtualKeyRepo', () => ({
   findById: mock(async () => null),
 }))
 
+const mockListAllWorkspaceIds = mock(async (): Promise<string[]> => [])
+
 mock.module('@tokenlens/shared/workspaceRepo', () => ({
   getBudgetCap: mockGetBudgetCap,
-  listAllWorkspaceIds: mock(async (): Promise<string[]> => []),
+  listAllWorkspaceIds: mockListAllWorkspaceIds,
+}))
+
+// All exports included to prevent cross-file poisoning; no DNS in tests.
+mock.module('@tokenlens/shared/services/ssrfGuard', () => ({
+  assertPublicHttpsUrl: mock(async () => {}),
+  isForbiddenLiteralHost: () => false,
+  isPrivateIp: () => false,
 }))
 
 // Both getCurrentSpend and incrementSpend included to prevent cross-file poisoning
@@ -59,7 +68,7 @@ mock.module('@tokenlens/shared/services/budgetService', () => ({
   incrementSpend: mock(async () => {}),
 }))
 
-const { processBudgetAlerts } = await import('./alertProcessor.ts')
+const { processBudgetAlerts, processAlertJob } = await import('./alertProcessor.ts')
 
 const ACTIVE_CONFIG: AlertConfig = {
   id: 'cfg-001',
@@ -79,6 +88,8 @@ beforeEach(() => {
   mockDragonflyGet.mockClear()
   mockDragonflySetex.mockClear()
 
+  mockListAllWorkspaceIds.mockClear()
+  mockListAllWorkspaceIds.mockImplementation(async () => [])
   mockListAlertConfigs.mockImplementation(async () => [ACTIVE_CONFIG])
   mockFindKeysByWorkspace.mockImplementation(async () => [])
   mockGetBudgetCap.mockImplementation(async () => null)
@@ -147,5 +158,48 @@ describe('processBudgetAlerts', () => {
     mockFindKeysByWorkspace.mockImplementation(async () => [key])
     await processBudgetAlerts('ws-001')
     expect(mockDragonflyGet.mock.calls).toHaveLength(0)
+  })
+})
+
+describe('processAlertJob', () => {
+  function makeAlertJob(data: unknown) {
+    return { id: 'job-test', data } as Parameters<typeof processAlertJob>[0]
+  }
+
+  test('budget_sweep runs budget checks for every workspace', async () => {
+    mockListAllWorkspaceIds.mockImplementation(async () => ['ws-001', 'ws-002'])
+    mockGetBudgetCap.mockImplementation(async () => 100)
+    mockGetCurrentSpend.mockImplementation(async () => ({ keySpend: 0, wsSpend: 90 }))
+    await processAlertJob(makeAlertJob({ type: 'budget_sweep' }))
+    const wsArgs = mockGetBudgetCap.mock.calls.map((c) => c[0])
+    expect(wsArgs).toEqual(['ws-001', 'ws-002'])
+  })
+
+  test('malformed payload (missing type) throws instead of silently no-oping', async () => {
+    await expect(
+      processAlertJob(makeAlertJob({ virtualKeyId: 'vk-1', workspaceId: 'ws-1' }))
+    ).rejects.toThrow()
+    expect(mockGetBudgetCap.mock.calls).toHaveLength(0)
+  })
+
+  test('anomaly alert fires once per active config with per-config dedup keys', async () => {
+    mockListAlertConfigs.mockImplementation(async () => [
+      ACTIVE_CONFIG,
+      { ...ACTIVE_CONFIG, id: 'cfg-002', channel: 'second@example.com' },
+    ])
+    await processAlertJob(
+      makeAlertJob({
+        type: 'anomaly',
+        workspaceId: 'ws-001',
+        virtualKeyId: 'vk-001',
+        keyName: 'vk-001',
+        spend: 12,
+        multiplier: '4.0x',
+      })
+    )
+    expect(mockDragonflyGet.mock.calls).toHaveLength(2)
+    const dedupKeys = mockDragonflyGet.mock.calls.map((c) => c[0] as string)
+    expect(dedupKeys[0]).toContain('cfg-001')
+    expect(dedupKeys[1]).toContain('cfg-002')
   })
 })

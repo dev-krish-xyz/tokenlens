@@ -1,7 +1,8 @@
 import type { Job } from 'bullmq'
 import { clickhouseClient } from '@tokenlens/shared'
-import { alertQueue } from '@tokenlens/shared/queues/definitions'
-import type { AnomalyJobData, AlertJobData } from '@tokenlens/shared/queues/types'
+import { alertQueue, anomalyQueue } from '@tokenlens/shared/queues/definitions'
+import { anomalyJobSchema, type AnomalyJobData, type AlertJobData } from '@tokenlens/shared/queues/types'
+import { hashVirtualKeyId } from '@tokenlens/shared/keyVault'
 import { findByWorkspace as findKeysByWorkspace } from '@tokenlens/shared/virtualKeyRepo'
 import { listAllWorkspaceIds } from '@tokenlens/shared/workspaceRepo'
 
@@ -9,12 +10,14 @@ type HourlySpendRow = { hourly_spend: string }
 type BaselineRow = { baseline: string }
 
 export async function processAnomalyCheck(job: Job<AnomalyJobData>): Promise<void> {
-  if (job.data.workspaceId === '_') {
+  const data = anomalyJobSchema.parse(job.data)
+
+  if ('scope' in data) {
     const workspaceIds = await listAllWorkspaceIds()
     for (const workspaceId of workspaceIds) {
       const keys = await findKeysByWorkspace(workspaceId)
       for (const key of keys) {
-        await alertQueue.add('anomaly-check', {
+        await anomalyQueue.add('anomaly-check', {
           virtualKeyId: key.id,
           workspaceId,
         } satisfies AnomalyJobData)
@@ -23,7 +26,9 @@ export async function processAnomalyCheck(job: Job<AnomalyJobData>): Promise<voi
     return
   }
 
-  const { virtualKeyId } = job.data
+  const { virtualKeyId, workspaceId } = data
+  // ClickHouse stores hashVirtualKeyId() digests, never raw key ids.
+  const hashedKeyId = hashVirtualKeyId(virtualKeyId)
 
   const currentResult = await clickhouseClient.query({
     query: `
@@ -32,7 +37,7 @@ export async function processAnomalyCheck(job: Job<AnomalyJobData>): Promise<voi
       WHERE virtual_key_id = {virtualKeyId: String}
         AND created_at >= now() - INTERVAL 1 HOUR
     `,
-    query_params: { virtualKeyId },
+    query_params: { virtualKeyId: hashedKeyId },
     format: 'JSONEachRow',
   })
   const currentRows = await currentResult.json<HourlySpendRow>()
@@ -52,7 +57,7 @@ export async function processAnomalyCheck(job: Job<AnomalyJobData>): Promise<voi
         GROUP BY hour
       )
     `,
-    query_params: { virtualKeyId },
+    query_params: { virtualKeyId: hashedKeyId },
     format: 'JSONEachRow',
   })
   const baselineRows = await baselineResult.json<BaselineRow>()
@@ -65,13 +70,12 @@ export async function processAnomalyCheck(job: Job<AnomalyJobData>): Promise<voi
 
     await alertQueue.add('alert', {
       type: 'anomaly',
-      workspaceId: job.data.workspaceId,
-      virtualKeyId: job.data.virtualKeyId,
-      keyName: job.data.virtualKeyId,
+      workspaceId,
+      virtualKeyId,
+      keyName: virtualKeyId,
       spend: currentHourSpend,
       baseline,
       multiplier: `${multiplier}x`,
-      percentage: 0,
     } satisfies AlertJobData)
   }
 }

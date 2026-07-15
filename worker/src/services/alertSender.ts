@@ -1,4 +1,5 @@
 import { dragonflyClient } from '@tokenlens/shared'
+import { assertPublicHttpsUrl } from '@tokenlens/shared/services/ssrfGuard'
 
 export type AlertPayload = {
   type: 'budget' | 'anomaly' | 'dead_key'
@@ -12,10 +13,20 @@ export type AlertPayload = {
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
+// keyName (and the message built from it) is user-controlled — escape so a
+// crafted key name can't inject markup into email sent from our domain.
+function escapeHtml(s: string): string {
+  return s
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+}
+
 function buildAlertEmailHtml(payload: AlertPayload): string {
   return `<html><body style="font-family:sans-serif;max-width:600px;margin:0 auto">
-<h2 style="color:#d32f2f">TokenLens Alert: ${payload.keyName}</h2>
-<p>${payload.message}</p>
+<h2 style="color:#d32f2f">TokenLens Alert: ${escapeHtml(payload.keyName)}</h2>
+<p>${escapeHtml(payload.message)}</p>
 ${payload.spend !== undefined ? `<p><strong>Spend:</strong> $${payload.spend.toFixed(4)}</p>` : ''}
 ${payload.cap !== undefined ? `<p><strong>Cap:</strong> $${payload.cap.toFixed(4)}</p>` : ''}
 ${payload.percentage !== undefined ? `<p><strong>Usage:</strong> ${payload.percentage.toFixed(1)}%</p>` : ''}
@@ -50,6 +61,14 @@ export async function sendAlert(channel: string, payload: AlertPayload): Promise
   }
 
   if (channel.startsWith('https://')) {
+    // Channel is user-configured — refuse URLs that resolve to private or
+    // reserved addresses so the worker can't be used as an SSRF proxy.
+    try {
+      await assertPublicHttpsUrl(channel)
+    } catch (err) {
+      console.error(`[alertSender] Webhook URL rejected: ${err instanceof Error ? err.message : 'invalid'}`)
+      return
+    }
     const controller = new AbortController()
     const timeout = setTimeout(() => controller.abort(), 10_000)
     try {
@@ -61,6 +80,8 @@ export async function sendAlert(channel: string, payload: AlertPayload): Promise
         },
         body: JSON.stringify(payload),
         signal: controller.signal,
+        // A public host must not be able to 302 the worker to a private one.
+        redirect: 'error',
       })
       if (!res.ok) {
         console.error(`[alertSender] Webhook error ${res.status}: ${channel}`)

@@ -12,6 +12,7 @@ import {
 } from '@tabler/icons-react'
 import { FadeIn, Section, SectionLabel, SectionSub, SectionTitle } from './ui.tsx'
 import { easeOutExpo } from '../lib/motion.ts'
+import { useDemoLoop } from '../lib/useDemoLoop.ts'
 
 type StepRole = 'pass' | 'block' | 'skip'
 
@@ -96,44 +97,21 @@ export function GatewayChapter() {
     pausedRef.current = !inView
   }, [inView])
 
-  useEffect(() => {
-    if (reduce) {
-      setActive(4)
-      setBlocked(true)
-      return
-    }
+  useDemoLoop(
+    async ({ wait, cancelled, waitWhilePaused }) => {
+      while (!cancelled()) {
+        await waitWhilePaused()
+        if (cancelled()) break
 
-    let cancelled = false
-    let timer: number | undefined
-    let i = 0
-
-    const clear = () => {
-      if (timer !== undefined) window.clearTimeout(timer)
-    }
-    const wait = (ms: number) =>
-      new Promise<void>((resolve) => {
-        timer = window.setTimeout(resolve, ms)
-      })
-
-    const run = async () => {
-      while (!cancelled) {
-        if (pausedRef.current) {
-          await wait(400)
-          continue
-        }
-
-        // Reset cycle
-        i = 0
+        let i = 0
         setBlocked(false)
         setActive(0)
         await wait(500)
-        if (cancelled) break
+        if (cancelled()) break
 
-        while (i < STEPS.length && !cancelled) {
-          if (pausedRef.current) {
-            await wait(400)
-            continue
-          }
+        while (i < STEPS.length && !cancelled()) {
+          await waitWhilePaused()
+          if (cancelled()) break
 
           const step = STEPS[i]!
           setActive(i)
@@ -141,7 +119,6 @@ export function GatewayChapter() {
           if (step.role === 'block') {
             setBlocked(true)
             await wait(2200)
-            // Stay on block beat, then skip remaining as dimmed
             i = STEPS.length
             await wait(1600)
             break
@@ -153,19 +130,22 @@ export function GatewayChapter() {
 
         await wait(600)
       }
-    }
-
-    void run()
-    return () => {
-      cancelled = true
-      clear()
-    }
-  }, [reduce])
+    },
+    [],
+    {
+      reduce,
+      pausedRef,
+      onReduce: () => {
+        setActive(4)
+        setBlocked(true)
+      },
+    },
+  )
 
   const current = STEPS[Math.min(active, STEPS.length - 1)]!
 
   return (
-    <Section id="how-it-works" dark className="overflow-hidden py-24 sm:py-32">
+    <Section id="how-it-works" dark className="overflow-hidden py-20 sm:py-24 lg:py-28">
       {/* Quiet dark atmosphere — no loud purple wash */}
       <div
         aria-hidden

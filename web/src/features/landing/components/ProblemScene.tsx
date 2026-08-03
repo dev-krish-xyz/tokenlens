@@ -11,14 +11,16 @@ import {
   IconShieldLock,
 } from '@tabler/icons-react'
 import { FadeIn, Section, SectionLabel, SectionSub, SectionTitle } from './ui.tsx'
+import { MacWindow } from './MacWindow.tsx'
 import { easeOutExpo } from '../lib/motion.ts'
+import { useDemoLoop } from '../lib/useDemoLoop.ts'
 
 /**
  * 01 — Dual Mac-window path theaters, muted palette.
  */
 export function ProblemScene() {
   return (
-    <Section id="product" className="py-24 sm:py-32">
+    <Section id="product" className="py-20 sm:py-24 lg:py-28">
       <FadeIn>
         <SectionLabel>01 — The problem</SectionLabel>
         <SectionTitle>
@@ -72,96 +74,74 @@ function PathTheater({ mode }: { mode: 'without' | 'with' }) {
     pausedRef.current = !inView
   }, [inView])
 
-  useEffect(() => {
-    if (reduce) {
-      setPhase(4)
-      if (mode === 'without') setInvoice(12840)
-      else setBlocked(47)
-      return
-    }
-
-    let cancelled = false
-    let timer: number | undefined
-    let inv = 0
-    let blk = 0
-
-    const clear = () => {
-      if (timer !== undefined) window.clearTimeout(timer)
-    }
-    const wait = (ms: number) =>
-      new Promise<void>((resolve) => {
-        timer = window.setTimeout(resolve, ms)
-      })
-
-    const run = async () => {
-      while (!cancelled) {
-        if (pausedRef.current) {
-          await wait(400)
-          continue
-        }
+  useDemoLoop(
+    async ({ wait, cancelled, waitWhilePaused }) => {
+      let inv = 0
+      let blk = 0
+      while (!cancelled()) {
+        await waitWhilePaused()
+        if (cancelled()) break
 
         setPhase(0)
         await wait(600)
-        if (cancelled) break
+        if (cancelled()) break
 
         setPhase(1)
         await wait(800)
-        if (cancelled) break
+        if (cancelled()) break
 
         if (mode === 'without') {
           setPhase(2)
           await wait(700)
-          if (cancelled) break
+          if (cancelled()) break
           setPhase(3)
           inv += 180 + Math.round(Math.random() * 220)
           setInvoice(inv)
           await wait(1000)
-          if (cancelled) break
+          if (cancelled()) break
           setPhase(4)
           await wait(1800)
         } else {
           setPhase(2)
           await wait(800)
-          if (cancelled) break
+          if (cancelled()) break
           setPhase(3)
           blk += 1
           setBlocked(blk)
           await wait(1000)
-          if (cancelled) break
+          if (cancelled()) break
           setPhase(4)
           await wait(1800)
         }
       }
-    }
-
-    void run()
-    return () => {
-      cancelled = true
-      clear()
-    }
-  }, [mode, reduce])
+    },
+    [mode],
+    {
+      reduce,
+      pausedRef,
+      onReduce: () => {
+        setPhase(4)
+        if (mode === 'without') setInvoice(12840)
+        else setBlocked(47)
+      },
+    },
+  )
 
   const isWithout = mode === 'without'
   const title = isWithout ? 'without.tokenlens' : 'with.tokenlens'
   const subtitle = isWithout ? 'Direct to provider' : 'Gateway in the path'
 
   return (
-    <div
-      ref={ref}
-      className="overflow-hidden rounded-[14px] border border-black/[0.08] bg-[#F6F6F6] shadow-[0_1px_1px_rgba(0,0,0,0.04),0_8px_24px_rgba(0,0,0,0.06),0_20px_40px_-12px_rgba(0,0,0,0.08)]"
-    >
-      {/* Mac title bar */}
-      <div className="relative flex h-11 items-center border-b border-black/[0.06] bg-gradient-to-b from-[#FBFBFB] to-[#F0F0F0] px-3.5">
-        <div className="flex items-center gap-[7px]">
-          <span className="h-[11px] w-[11px] rounded-full bg-[#FF5F57] shadow-[inset_0_0_0_0.5px_rgba(0,0,0,0.12)]" />
-          <span className="h-[11px] w-[11px] rounded-full bg-[#FEBC2E] shadow-[inset_0_0_0_0.5px_rgba(0,0,0,0.12)]" />
-          <span className="h-[11px] w-[11px] rounded-full bg-[#28C840] shadow-[inset_0_0_0_0.5px_rgba(0,0,0,0.12)]" />
-        </div>
-        <div className="pointer-events-none absolute inset-x-0 flex justify-center">
-          <span className="lp-mono text-[11px] font-medium text-[#6B6B6B]">{title}</span>
-        </div>
-      </div>
-
+    <div ref={ref}>
+      <MacWindow
+        title={title}
+        footer={
+          <>
+            <span className="lp-mono">{isWithout ? 'path · direct' : 'path · gateway'}</span>
+            <span className="lp-mono">live simulation</span>
+          </>
+        }
+      >
       {/* Toolbar / status */}
       <div className="flex items-center justify-between gap-3 border-b border-black/[0.05] bg-[#FAFAFA] px-4 py-2.5">
         <div className="min-w-0">
@@ -315,12 +295,8 @@ function PathTheater({ mode }: { mode: 'without' | 'with' }) {
           </div>
         </div>
 
-        {/* Status bar */}
-        <div className="flex items-center justify-between border-t border-black/[0.05] bg-[#F3F3F3] px-4 py-1.5 text-[10px] text-[#8A8A8A]">
-          <span className="lp-mono">{isWithout ? 'path · direct' : 'path · gateway'}</span>
-          <span className="lp-mono">live simulation</span>
-        </div>
       </div>
+      </MacWindow>
     </div>
   )
 }

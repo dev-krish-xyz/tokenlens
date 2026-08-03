@@ -5,8 +5,8 @@ import { FadeIn, Section, Stagger, StaggerItem } from './ui.tsx'
 const SIGNALS = [
   { value: '$0', label: 'Overage on blocked calls', detail: 'Provider never charged' },
   { value: '429', label: 'Hard budget response', detail: 'Before the provider hop' },
-  { value: '1-line', label: 'Integration', detail: 'Swap baseURL + virtual key' },
-  { value: '3', label: 'Providers out of the box', detail: 'OpenAI · Anthropic · Gemini' },
+  { value: 'AES', label: 'Encrypted virtual keys', detail: 'Secrets never logged' },
+  { value: '3', label: 'Providers · stream + JSON', detail: 'OpenAI · Anthropic · Gemini' },
 ]
 
 export function SignalStrip() {

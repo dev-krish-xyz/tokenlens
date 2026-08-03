@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { signIn } from '../../../lib/auth-client.ts'
+import { TokenLensLogo } from '../../../components/TokenLensLogo.tsx'
 
 const GOOGLE_SVG = (
   <svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true">
@@ -84,15 +85,7 @@ export default function LoginPage() {
             color: '#1C1B22',
           }}
         >
-          <span
-            style={{
-              width: 7,
-              height: 7,
-              borderRadius: '50%',
-              background: '#5A4EC7',
-              display: 'inline-block',
-            }}
-          />
+          <TokenLensLogo size={22} />
           TokenLens
         </div>
       </nav>

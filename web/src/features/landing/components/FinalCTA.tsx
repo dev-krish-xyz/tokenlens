@@ -5,7 +5,7 @@ import { FadeIn, PrimaryButton, SecondaryButton, Section } from './ui.tsx'
 
 export function FinalCTA() {
   return (
-    <Section wide className="pb-24 sm:pb-28">
+    <Section wide className="pb-20 sm:pb-24 lg:pb-28">
       <FadeIn>
         <div className="relative overflow-hidden rounded-[32px] bg-[var(--lp-dark)] px-6 py-16 text-center sm:px-12 sm:py-20">
           <div
@@ -44,12 +44,15 @@ export function FinalCTA() {
                 <IconArrowRight size={16} />
               </PrimaryButton>
               <SecondaryButton
-                href="/dashboard"
+                href="/login"
                 className="!border-white/15 !bg-white/5 !text-white hover:!bg-white/10"
               >
-                View dashboard
+                Sign in
               </SecondaryButton>
             </div>
+            <p className="mt-5 text-[13px] text-white/40">
+              Free Starter · no card required · hard budgets from day one
+            </p>
           </div>
         </div>
       </FadeIn>

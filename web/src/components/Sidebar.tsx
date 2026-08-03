@@ -1,6 +1,7 @@
 'use client'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
+import { TokenLensLogo } from './TokenLensLogo.tsx'
 import {
   IconLayoutDashboard,
   IconChartBar,
@@ -123,20 +124,7 @@ export function Sidebar() {
           flexShrink: 0,
         }}
       >
-        <span
-          style={{
-            width: 18,
-            height: 18,
-            borderRadius: 5,
-            background: 'linear-gradient(135deg, #6366F1 0%, #4F46E5 100%)',
-            display: 'inline-flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            flexShrink: 0,
-          }}
-        >
-          <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'rgba(255,255,255,0.9)' }} />
-        </span>
+        <TokenLensLogo size={20} />
         <span style={{ fontSize: 13, fontWeight: 600, color: '#0D0D0D', letterSpacing: '-0.01em' }}>
           TokenLens
         </span>

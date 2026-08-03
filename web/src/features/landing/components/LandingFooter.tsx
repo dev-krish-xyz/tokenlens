@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import { TokenLensLogo } from '../../../components/TokenLensLogo.tsx'
 
 const COLUMNS = [
   {
@@ -19,8 +20,9 @@ const COLUMNS = [
   {
     title: 'Company',
     links: [
-      { label: 'Privacy', href: '#' },
-      { label: 'Terms', href: '#' },
+      { label: 'Privacy', href: 'mailto:privacy@tokenlens.ai' },
+      { label: 'Terms', href: 'mailto:legal@tokenlens.ai' },
+      { label: 'Contact', href: 'mailto:hello@tokenlens.ai' },
     ],
   },
 ]
@@ -31,10 +33,8 @@ export function LandingFooter() {
       <div className="mx-auto max-w-6xl px-5 py-14 sm:px-8 lg:px-10">
         <div className="grid gap-10 sm:grid-cols-2 lg:grid-cols-4">
           <div>
-            <div className="flex items-center gap-2.5">
-              <span className="flex h-8 w-8 items-center justify-center rounded-[10px] bg-[linear-gradient(145deg,#6366F1_0%,#4F46E5_55%,#312E81_100%)] text-[11px] font-bold text-white">
-                TL
-              </span>
+            <div className="flex items-center gap-1.5">
+              <TokenLensLogo size={28} />
               <span className="text-[15px] font-semibold tracking-tight">TokenLens</span>
             </div>
             <p className="mt-4 max-w-xs text-[14px] leading-relaxed text-[var(--lp-muted)]">

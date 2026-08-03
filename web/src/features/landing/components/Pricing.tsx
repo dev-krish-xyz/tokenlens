@@ -46,21 +46,17 @@ const PLANS = [
     cta: 'Talk to sales',
     href: 'mailto:sales@tokenlens.ai',
     popular: false,
-    features: ['On-prem gateway', 'SAML / SCIM', 'Custom contracts', '99.99% SLA'],
+    features: ['Dedicated support', 'SAML / SCIM', 'Custom contracts', 'SLA options'],
   },
 ]
 
 export function Pricing() {
   return (
-    <Section id="pricing" className="relative py-24 sm:py-32">
-      {/* Soft section wash */}
-      <div
-        aria-hidden
-        className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-1/2 bg-[radial-gradient(ellipse_60%_80%_at_50%_0%,rgba(99,102,241,0.06),transparent_70%)]"
-      />
+    <Section id="pricing" className="relative py-20 sm:py-24 lg:py-28">
+      <div aria-hidden className="lp-section-wash" />
 
       <FadeIn>
-        <SectionLabel>05 — Pricing</SectionLabel>
+        <SectionLabel>07 — Pricing</SectionLabel>
         <SectionTitle>Simple, usage-based pricing.</SectionTitle>
         <SectionSub>
           Start free. Scale when governance becomes mission-critical — not before.

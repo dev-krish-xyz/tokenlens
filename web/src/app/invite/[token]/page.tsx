@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation'
 import { findByToken, accept } from '@tokenlens/shared/inviteRepo'
 import { getSession } from '../../../lib/session.ts'
+import { TokenLensLogo } from '../../../components/TokenLensLogo.tsx'
 
 function InviteErrorPage({ message }: { message: string }) {
   return (
@@ -113,15 +114,7 @@ function InviteLandingPage({
             color: '#1C1B22',
           }}
         >
-          <span
-            style={{
-              width: 7,
-              height: 7,
-              borderRadius: '50%',
-              background: '#5A4EC7',
-              display: 'inline-block',
-            }}
-          />
+          <TokenLensLogo size={22} />
           TokenLens
         </div>
       </nav>

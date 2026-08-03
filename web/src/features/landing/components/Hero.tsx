@@ -6,72 +6,72 @@ import { ProductStage } from '../mocks/ProductStage.tsx'
 import { easeOutExpo, lineReveal, staggerContainer } from '../lib/motion.ts'
 import { PrimaryButton, SecondaryButton } from './ui.tsx'
 
-const LINES = ['Stop overpaying for AI.', 'Block spend before the call.']
+const LINES = [
+  { text: 'AI spend ends here.', accent: null as string | null },
+  {
+    text: 'Hard-block over-budget calls before the provider.',
+    accent: 'before',
+  },
+]
+
+const PROOF = [
+  { value: 'HTTP 429', label: 'pre-provider' },
+  { value: '$0', label: 'charged on block' },
+  { value: '3', label: 'providers' },
+]
 
 export function Hero() {
   const reduce = useReducedMotion()
 
   return (
-    <section className="relative overflow-hidden pb-16 pt-28 sm:pb-24 sm:pt-32 lg:pt-36">
-      {/* atmosphere */}
-      <div aria-hidden className="lp-mesh absolute inset-0 -z-20" />
-      <div aria-hidden className="lp-grid absolute inset-0 -z-10 opacity-80" />
-      <div aria-hidden className="lp-noise absolute inset-0 -z-10" />
+    <section className="relative isolate overflow-hidden pb-14 pt-28 sm:pb-20 sm:pt-32 lg:pb-24 lg:pt-36">
+      {/* Hero background — full control-plane field (previous build) */}
+      <div aria-hidden className="lp-hero-bg">
+        <div className="lp-hero-mesh" />
+        <div className="lp-hero-orb lp-hero-orb-a" />
+        <div className="lp-hero-orb lp-hero-orb-b" />
+        <div className="lp-hero-orb lp-hero-orb-c" />
+        <div className="lp-hero-orb lp-hero-orb-d" />
+        <div className="lp-hero-grid" />
+        <div className="lp-hero-dots" />
+        <div className="lp-hero-spotlight" />
+        <div className="lp-hero-vignette" />
+        <div className="lp-hero-horizon" />
+        <div className="lp-hero-grain" />
+      </div>
 
-      <div className="relative mx-auto max-w-7xl px-5 sm:px-8 lg:px-10">
-        {/* centered copy */}
+      <div className="relative z-10 mx-auto max-w-7xl px-5 sm:px-8 lg:px-10">
         <div className="mx-auto max-w-3xl text-center">
           <motion.div
             initial={reduce ? false : { opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, ease: easeOutExpo }}
-            className="mb-7 inline-flex items-center gap-2 rounded-full border border-[var(--lp-line)] bg-white/70 px-3.5 py-1.5 text-[13px] font-medium text-[var(--lp-ink)] shadow-sm backdrop-blur"
+            className="mb-7 inline-flex items-center gap-2 rounded-full border border-[var(--lp-line)] bg-white/80 px-3.5 py-1.5 text-[12px] font-medium text-[var(--lp-ink)] shadow-sm backdrop-blur sm:text-[13px]"
           >
-            <span className="relative flex h-2 w-2">
-              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#6366F1] opacity-40" />
-              <span className="relative inline-flex h-2 w-2 rounded-full bg-[#6366F1]" />
+            <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-[#6366F1]" />
+            <span className="text-[var(--lp-muted)]">
+              Hard budgets · pre-provider · OpenAI · Anthropic · Gemini
             </span>
-            Public beta · free for 30 days
           </motion.div>
 
           {reduce ? (
-            <h1 className="lp-display text-[var(--lp-ink)]">
+            <h1 className="lp-display tracking-[-0.04em] text-[var(--lp-ink)]">
               {LINES.map((line) => (
-                <span key={line} className="block">
-                  {line.includes('before') ? (
-                    <>
-                      Block spend{' '}
-                      <span className="bg-gradient-to-r from-[#6366F1] to-[#4F46E5] bg-clip-text text-transparent">
-                        before
-                      </span>{' '}
-                      the call.
-                    </>
-                  ) : (
-                    line
-                  )}
+                <span key={line.text} className="block">
+                  <HeadlineLine line={line} />
                 </span>
               ))}
             </h1>
           ) : (
             <motion.h1
-              className="lp-display text-[var(--lp-ink)]"
+              className="lp-display tracking-[-0.04em] text-[var(--lp-ink)]"
               initial="hidden"
               animate="show"
               variants={staggerContainer}
             >
               {LINES.map((line) => (
-                <motion.span key={line} className="block" variants={lineReveal}>
-                  {line.includes('before') ? (
-                    <>
-                      Block spend{' '}
-                      <span className="bg-gradient-to-r from-[#6366F1] to-[#4F46E5] bg-clip-text text-transparent">
-                        before
-                      </span>{' '}
-                      the call.
-                    </>
-                  ) : (
-                    line
-                  )}
+                <motion.span key={line.text} className="block" variants={lineReveal}>
+                  <HeadlineLine line={line} />
                 </motion.span>
               ))}
             </motion.h1>
@@ -81,53 +81,95 @@ export function Hero() {
             className="mx-auto mt-6 max-w-xl text-[17px] leading-relaxed text-[var(--lp-muted)] sm:text-[18px]"
             initial={reduce ? false : { opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.2, ease: easeOutExpo }}
+            transition={{ duration: 0.6, delay: 0.18, ease: easeOutExpo }}
           >
-            TokenLens is the AI cost governance control plane. Hard-block
-            over-budget requests at the gateway — before they hit OpenAI,
-            Anthropic, or Gemini.
+            TokenLens is the AI cost governance gateway. Atomic budget checks on
+            every request — $0 charged when blocked.
           </motion.p>
 
           <motion.div
-            className="mt-9 flex flex-wrap items-center justify-center gap-3"
+            className="mt-9 flex flex-col items-center gap-3"
             initial={reduce ? false : { opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.28, ease: easeOutExpo }}
+            transition={{ duration: 0.6, delay: 0.26, ease: easeOutExpo }}
           >
-            <PrimaryButton href="/register">
-              Start free
-              <IconArrowRight size={16} />
-            </PrimaryButton>
-            <SecondaryButton
-              onClick={() => {
-                document.getElementById('how-it-works')?.scrollIntoView({ behavior: 'smooth' })
-              }}
-            >
-              <IconPlayerPlay size={15} />
-              Watch the block
-            </SecondaryButton>
+            <div className="flex flex-wrap items-center justify-center gap-3">
+              <PrimaryButton href="/register">
+                Start free
+                <IconArrowRight size={16} />
+              </PrimaryButton>
+              <SecondaryButton
+                onClick={() => {
+                  document
+                    .getElementById('hero-stage')
+                    ?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+                }}
+              >
+                <IconPlayerPlay size={15} />
+                See the 429
+              </SecondaryButton>
+            </div>
+            <p className="text-[12px] text-[var(--lp-faint)]">
+              30 days free · Starter stays free forever
+            </p>
           </motion.div>
 
-          <motion.p
-            className="lp-mono mt-6 text-[12px] text-[var(--lp-faint)]"
-            initial={reduce ? false : { opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.4, duration: 0.5 }}
+          {/* Proof row — Blackbox / Evil Martians numbers path */}
+          <motion.ul
+            className="mx-auto mt-10 grid max-w-xl grid-cols-3 gap-2 sm:gap-3"
+            initial={reduce ? false : { opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.55, delay: 0.34, ease: easeOutExpo }}
           >
-            HTTP 429 · $0 wasted on blocked requests
-          </motion.p>
+            {PROOF.map((p) => (
+              <li
+                key={p.value}
+                className="rounded-xl border border-[var(--lp-line)] bg-white/70 px-3 py-2.5 text-center shadow-sm backdrop-blur-sm"
+              >
+                <p className="lp-mono text-[13px] font-semibold tracking-tight text-[var(--lp-ink)] sm:text-[14px]">
+                  {p.value}
+                </p>
+                <p className="mt-0.5 text-[10px] font-medium uppercase tracking-[0.08em] text-[var(--lp-faint)]">
+                  {p.label}
+                </p>
+              </li>
+            ))}
+          </motion.ul>
         </div>
 
-        {/* product stage */}
         <motion.div
-          className="mt-14 sm:mt-16 lg:mt-20"
-          initial={reduce ? false : { opacity: 0, y: 40 }}
+          id="hero-stage"
+          className="mt-12 scroll-mt-28 sm:mt-14 lg:mt-16"
+          initial={reduce ? false : { opacity: 0, y: 36 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.85, delay: 0.25, ease: easeOutExpo }}
+          transition={{ duration: 0.8, delay: 0.32, ease: easeOutExpo }}
         >
           <ProductStage />
+          <p className="lp-mono mt-4 text-center text-[11px] text-[var(--lp-faint)] sm:text-[12px]">
+            Live demo · budget enforcer · OpenAI · Anthropic · Gemini · $0 overage
+          </p>
         </motion.div>
       </div>
     </section>
+  )
+}
+
+function HeadlineLine({
+  line,
+}: {
+  line: { text: string; accent: string | null }
+}) {
+  if (!line.accent || !line.text.includes(line.accent)) {
+    return <>{line.text}</>
+  }
+  const [before, after] = line.text.split(line.accent)
+  return (
+    <>
+      {before}
+      <span className="bg-gradient-to-r from-[#6366F1] to-[#4F46E5] bg-clip-text text-transparent">
+        {line.accent}
+      </span>
+      {after}
+    </>
   )
 }

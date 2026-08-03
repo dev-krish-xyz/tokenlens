@@ -114,22 +114,19 @@ export function Hero() {
             </p>
           </motion.div>
 
-          {/* Proof row — Blackbox / Evil Martians numbers path */}
+          {/* Proof metrics — large type, monochrome (Photon-style scale) */}
           <motion.ul
-            className="mx-auto mt-10 grid max-w-xl grid-cols-3 gap-2 sm:gap-3"
+            className="mx-auto mt-12 flex max-w-lg items-stretch justify-center divide-x divide-[var(--lp-line-strong)] sm:max-w-xl"
             initial={reduce ? false : { opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.55, delay: 0.34, ease: easeOutExpo }}
           >
             {PROOF.map((p) => (
-              <li
-                key={p.value}
-                className="rounded-xl border border-[var(--lp-line)] bg-white/70 px-3 py-2.5 text-center shadow-sm backdrop-blur-sm"
-              >
-                <p className="lp-mono text-[13px] font-semibold tracking-tight text-[var(--lp-ink)] sm:text-[14px]">
+              <li key={p.value} className="min-w-0 flex-1 px-4 py-1 text-center sm:px-6">
+                <p className="lp-mono text-[22px] font-semibold tracking-[-0.03em] text-[var(--lp-ink)] sm:text-[28px]">
                   {p.value}
                 </p>
-                <p className="mt-0.5 text-[10px] font-medium uppercase tracking-[0.08em] text-[var(--lp-faint)]">
+                <p className="mt-1.5 text-[10px] font-medium uppercase tracking-[0.1em] text-[var(--lp-faint)] sm:text-[11px]">
                   {p.label}
                 </p>
               </li>

@@ -8,6 +8,11 @@ export function FinalCTA() {
     <Section wide className="pb-20 sm:pb-24 lg:pb-28">
       <FadeIn>
         <div className="relative overflow-hidden rounded-[32px] bg-[var(--lp-dark)] px-6 py-16 text-center sm:px-12 sm:py-20">
+          {/* Indigo gate bar — brand punctuation */}
+          <div
+            aria-hidden
+            className="pointer-events-none absolute inset-x-0 top-0 h-[3px] bg-gradient-to-r from-[#4F46E5]/0 via-[#6366F1] to-[#4F46E5]/0"
+          />
           <div
             aria-hidden
             className="pointer-events-none absolute inset-0"
@@ -26,7 +31,10 @@ export function FinalCTA() {
             }}
           />
           <div className="relative">
-            <p className="lp-micro text-white/40">Ready when you are</p>
+            <p className="lp-mono text-[12px] text-indigo-300/70 sm:text-[13px]">
+              // hard budget · pre-provider
+            </p>
+            <p className="lp-micro mt-4 text-white/40">Ready when you are</p>
             <h2 className="lp-h2 mt-4 text-white">
               Govern every token
               <br className="hidden sm:block" /> before it costs you.

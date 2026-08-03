@@ -163,7 +163,7 @@ export function FeatureBento() {
               className="pointer-events-none absolute inset-0"
               style={{
                 background:
-                  'radial-gradient(ellipse 70% 50% at 50% 0%, rgba(99,102,241,0.2), transparent 55%)',
+                  'radial-gradient(ellipse 70% 50% at 50% 0%, rgba(99,102,241,0.1), transparent 55%)',
               }}
             />
             <div className="relative flex h-full flex-col p-5 sm:p-7">

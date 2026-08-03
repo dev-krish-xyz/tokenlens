@@ -46,17 +46,19 @@ export function SecurityStrip() {
         </SectionSub>
       </FadeIn>
 
-      <Stagger className="mt-12 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <Stagger className="mt-12 grid gap-4 sm:grid-cols-2">
         {PILLARS.map((p) => (
           <StaggerItem key={p.title}>
-            <div className="lp-card h-full p-5 sm:p-6">
-              <span className="flex h-10 w-10 items-center justify-center rounded-xl border border-[var(--lp-line)] bg-zinc-50 text-[var(--lp-ink)]">
-                <p.icon size={18} stroke={1.5} />
+            <div className="lp-card h-full p-6 sm:p-8">
+              <span className="flex h-11 w-11 items-center justify-center rounded-xl border border-[var(--lp-line)] bg-zinc-50 text-[var(--lp-ink)]">
+                <p.icon size={20} stroke={1.5} />
               </span>
-              <h3 className="mt-4 text-[15px] font-semibold tracking-tight text-[var(--lp-ink)]">
+              <h3 className="mt-5 text-[17px] font-semibold tracking-tight text-[var(--lp-ink)] sm:text-[18px]">
                 {p.title}
               </h3>
-              <p className="mt-2 text-[13px] leading-relaxed text-[var(--lp-muted)]">{p.body}</p>
+              <p className="mt-2.5 max-w-md text-[14px] leading-relaxed text-[var(--lp-muted)] sm:text-[15px]">
+                {p.body}
+              </p>
             </div>
           </StaggerItem>
         ))}

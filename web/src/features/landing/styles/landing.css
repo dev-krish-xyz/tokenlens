@@ -322,9 +322,10 @@
   top: 0;
   z-index: -1;
   height: 50%;
+  /* Scarce accent: mid-page wash stays barely visible */
   background: radial-gradient(
     ellipse 60% 80% at 50% 0%,
-    rgba(99, 102, 241, 0.05),
+    rgba(99, 102, 241, 0.03),
     transparent 70%
   );
 }
@@ -448,15 +449,15 @@
   content: '';
   pointer-events: none;
   position: absolute;
-  inset: 20% -8% -12%;
+  inset: 10% -12% -18%;
   z-index: -1;
   border-radius: 50%;
   background: radial-gradient(
     ellipse at center,
-    rgba(99, 102, 241, 0.16),
+    rgba(99, 102, 241, 0.32),
     transparent 68%
   );
-  filter: blur(8px);
+  filter: blur(12px);
 }
 
 .landing .lp-card-interactive {

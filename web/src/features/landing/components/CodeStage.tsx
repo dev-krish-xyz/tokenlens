@@ -122,11 +122,14 @@ export function CodeStage() {
   }
 
   return (
-    <Section className="py-20 sm:py-24 lg:py-28">
+    <Section dark className="py-20 sm:py-24 lg:py-28">
       <FadeIn>
-        <SectionLabel>06 — Integration</SectionLabel>
-        <SectionTitle>Three lines. Full control.</SectionTitle>
-        <SectionSub>
+        <p className="lp-mono mb-3 text-[12px] text-white/35 sm:text-[13px]">
+          // drop-in · OpenAI-compatible · pre-provider
+        </p>
+        <SectionLabel light>06 — Integration</SectionLabel>
+        <SectionTitle light>Three lines. Full control.</SectionTitle>
+        <SectionSub light>
           Keep your existing SDK — stream or JSON. Point at the TokenLens
           gateway, attach a virtual key, and governance is on the path.
         </SectionSub>
@@ -234,7 +237,7 @@ export function CodeStage() {
           ].map((chip) => (
             <span
               key={chip}
-              className="rounded-full border border-[var(--lp-line)] bg-white px-3.5 py-1.5 text-[12px] font-medium text-[var(--lp-muted)] shadow-sm"
+              className="rounded-full border border-white/10 bg-white/[0.06] px-3.5 py-1.5 text-[12px] font-medium text-white/55"
             >
               {chip}
             </span>

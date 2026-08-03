@@ -19,6 +19,8 @@
     "@types/pg": "^8.20.0",
     "better-auth": "^1.6.14",
     "drizzle-orm": "^0.45.2",
+    "framer-motion": "^12.43.0",
+    "geist": "^1.7.2",
     "next": "^15.3.3",
     "nuqs": "^2.8.9",
     "pg": "^8.21.0",

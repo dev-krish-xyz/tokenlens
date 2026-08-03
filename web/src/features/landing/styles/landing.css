@@ -1,0 +1,214 @@
+/* Marketing-only. Applied under .landing — does not affect dashboard density. */
+
+.landing {
+  --lp-bg: #fafafa;
+  --lp-ink: #09090b;
+  --lp-muted: #71717a;
+  --lp-faint: #a1a1aa;
+  --lp-line: rgba(9, 9, 11, 0.08);
+  --lp-line-strong: rgba(9, 9, 11, 0.12);
+  --lp-glow: rgba(99, 102, 241, 0.4);
+  --lp-dark: #09090b;
+  --lp-dark-2: #121214;
+  --lp-dark-3: #1a1a1e;
+  --lp-glass: rgba(255, 255, 255, 0.72);
+  --lp-glass-border: rgba(255, 255, 255, 0.55);
+  --lp-card-shadow:
+    0 1px 1px rgba(0, 0, 0, 0.02),
+    0 4px 12px rgba(0, 0, 0, 0.04),
+    0 24px 48px -16px rgba(0, 0, 0, 0.08);
+  --lp-card-shadow-hover:
+    0 1px 1px rgba(0, 0, 0, 0.03),
+    0 8px 24px rgba(0, 0, 0, 0.06),
+    0 32px 64px -16px rgba(0, 0, 0, 0.12);
+  --lp-display: clamp(2.75rem, 6.2vw, 4.75rem);
+  --lp-h2: clamp(2rem, 3.6vw, 3.1rem);
+  --lp-h3: 1.25rem;
+  --lp-body: 1.0625rem;
+  --lp-small: 0.875rem;
+  --lp-micro: 0.75rem;
+
+  color: var(--lp-ink);
+  background: var(--lp-bg);
+  font-size: 16px;
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+.landing .lp-display {
+  font-size: var(--lp-display);
+  font-weight: 600;
+  line-height: 1;
+  letter-spacing: -0.045em;
+}
+
+.landing .lp-h2 {
+  font-size: var(--lp-h2);
+  font-weight: 600;
+  line-height: 1.1;
+  letter-spacing: -0.035em;
+}
+
+.landing .lp-body {
+  font-size: var(--lp-body);
+  line-height: 1.65;
+  color: var(--lp-muted);
+}
+
+.landing .lp-micro {
+  font-size: var(--lp-micro);
+  font-weight: 500;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--lp-muted);
+}
+
+.landing .lp-mono {
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
+}
+
+/* Atmosphere */
+.landing .lp-mesh {
+  background:
+    radial-gradient(ellipse 90% 60% at 50% -20%, rgba(99, 102, 241, 0.16), transparent 55%),
+    radial-gradient(ellipse 50% 40% at 90% 20%, rgba(99, 102, 241, 0.06), transparent 50%),
+    radial-gradient(ellipse 40% 30% at 10% 40%, rgba(16, 185, 129, 0.04), transparent 45%),
+    var(--lp-bg);
+}
+
+.landing .lp-grid {
+  background-image:
+    linear-gradient(rgba(9, 9, 11, 0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(9, 9, 11, 0.04) 1px, transparent 1px);
+  background-size: 64px 64px;
+  mask-image: radial-gradient(ellipse 70% 60% at 50% 30%, black 20%, transparent 75%);
+}
+
+.landing .lp-noise {
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
+  opacity: 0.5;
+  pointer-events: none;
+}
+
+.landing .lp-card {
+  border-radius: 24px;
+  border: 1px solid var(--lp-line);
+  background: #fff;
+  box-shadow: var(--lp-card-shadow);
+}
+
+.landing .lp-card-interactive {
+  transition:
+    transform 0.35s cubic-bezier(0.16, 1, 0.3, 1),
+    box-shadow 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.landing .lp-card-interactive:hover {
+  transform: translateY(-3px);
+  box-shadow: var(--lp-card-shadow-hover);
+}
+
+.landing .lp-glass-nav {
+  background: var(--lp-glass);
+  border: 1px solid rgba(9, 9, 11, 0.08);
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.8) inset,
+    0 8px 32px rgba(0, 0, 0, 0.06),
+    0 2px 8px rgba(0, 0, 0, 0.03);
+  backdrop-filter: blur(16px) saturate(1.4);
+  -webkit-backdrop-filter: blur(16px) saturate(1.4);
+}
+
+.landing .lp-btn-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  height: 2.75rem;
+  padding: 0 1.35rem;
+  border-radius: 9999px;
+  background: var(--lp-ink);
+  color: #fff;
+  font-size: 0.9375rem;
+  font-weight: 500;
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.12) inset,
+    0 4px 12px rgba(9, 9, 11, 0.2);
+  transition:
+    transform 0.2s ease,
+    background 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+.landing .lp-btn-primary:hover {
+  background: #18181b;
+  transform: translateY(-1px);
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.14) inset,
+    0 8px 20px rgba(9, 9, 11, 0.22);
+}
+
+.landing .lp-btn-secondary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  height: 2.75rem;
+  padding: 0 1.35rem;
+  border-radius: 9999px;
+  border: 1px solid var(--lp-line-strong);
+  background: rgba(255, 255, 255, 0.7);
+  color: var(--lp-ink);
+  font-size: 0.9375rem;
+  font-weight: 500;
+  transition:
+    background 0.2s ease,
+    border-color 0.2s ease,
+    transform 0.2s ease;
+}
+
+.landing .lp-btn-secondary:hover {
+  background: #fff;
+  border-color: rgba(9, 9, 11, 0.18);
+  transform: translateY(-1px);
+}
+
+.landing .lp-btn-primary:focus-visible,
+.landing .lp-btn-secondary:focus-visible {
+  outline: 2px solid #6366f1;
+  outline-offset: 2px;
+}
+
+.landing .lp-stage-perspective {
+  perspective: 1400px;
+  /* Isolate paint so child updates don't repaint the whole hero */
+  contain: layout paint;
+}
+
+.landing .lp-stage-tilt {
+  /* Static tilt only — continuous motion here caused window flicker */
+  transform: rotateX(8deg) scale(0.985);
+  transform-origin: center top;
+  backface-visibility: hidden;
+  -webkit-font-smoothing: antialiased;
+}
+
+@media (max-width: 768px) {
+  .landing .lp-stage-tilt {
+    transform: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .landing .lp-card-interactive,
+  .landing .lp-btn-primary,
+  .landing .lp-btn-secondary {
+    transition: none;
+  }
+  .landing .lp-card-interactive:hover,
+  .landing .lp-btn-primary:hover,
+  .landing .lp-btn-secondary:hover {
+    transform: none;
+  }
+}

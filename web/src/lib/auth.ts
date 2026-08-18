@@ -7,8 +7,12 @@ import { ba_users, ba_sessions, ba_accounts, ba_verifications } from './auth-sch
 const googleClientId = process.env['GOOGLE_CLIENT_ID']
 const googleClientSecret = process.env['GOOGLE_CLIENT_SECRET']
 
+const betterAuthUrl =
+  process.env['BETTER_AUTH_URL'] ??
+  (process.env['VERCEL_URL'] ? `https://${process.env['VERCEL_URL']}` : undefined)
+
 export const auth = betterAuth({
-  baseURL: process.env['BETTER_AUTH_URL'],
+  baseURL: betterAuthUrl,
   secret: process.env['BETTER_AUTH_SECRET'],
 
   advanced: {

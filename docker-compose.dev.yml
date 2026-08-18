@@ -29,6 +29,8 @@ services:
 
   dragonfly:
     image: docker.dragonflydb.io/dragonflydb/dragonfly:latest
+    # BullMQ Lua scripts access undeclared keys; required for queues to work
+    command: ["dragonfly", "--logtostderr", "--default_lua_flags=allow-undeclared-keys"]
     ports:
       - "6379:6379"
     ulimits:

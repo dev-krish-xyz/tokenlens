@@ -7,7 +7,10 @@ const result = z
     CLICKHOUSE_URL: z.string().url(),
     CLICKHOUSE_USER: z.string().default('default'),
     CLICKHOUSE_PASSWORD: z.string().default(''),
-    DRAGONFLY_URL: z.string().startsWith('redis://'),
+    // redis:// local / rediss:// TLS (Upstash, Railway, managed Dragonfly)
+    DRAGONFLY_URL: z
+      .string()
+      .regex(/^rediss?:\/\//, 'DRAGONFLY_URL must start with redis:// or rediss://'),
     ENCRYPTION_KEY: z.string().length(64),
   })
   .safeParse(process.env);

@@ -6,8 +6,10 @@
     "dev": "turbo dev",
     "build": "turbo build",
     "test": "turbo test",
-    "typecheck": "turbo typecheck"
+    "typecheck": "turbo typecheck",
+    "deploy:web": "bunx vercel@latest --cwd web"
   },
+
   "devDependencies": {
     "turbo": "^2.3.3",
     "typescript": "^5.8.3"

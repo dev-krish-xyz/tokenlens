@@ -1,4 +1,4 @@
-# CLAUDE.md — TokenLens Engineering OS
+# TokenLens Engineering OS
 
 > Read this + STATE.md at every session start. Then wait for the task.
 

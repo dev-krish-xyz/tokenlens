@@ -41,4 +41,5 @@ jobs:
       - name: Typecheck
         run: bun run typecheck
       - name: Unit tests
-        run: bun run test
+        # Existing module mocks otherwise leak between files in discovery order.
+        run: bun run turbo test --continue=always -- --isolate

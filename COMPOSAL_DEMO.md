@@ -4,8 +4,8 @@
 
 - PR: https://github.com/dev-krish-xyz/tokenlens/pull/1 — **open, intentionally failing, do not merge**.
 - Branch: `demo/composal-stream-usage`; base: `dev` at `fcc74c0` (the actual GitHub default, not `main`).
-- Initial verified failing CI: https://github.com/dev-krish-xyz/tokenlens/actions/runs/45033249660
-- Reset checkpoint: Git tag `demo/composal-stream-usage-start` (the prepared, unfixed state).
+- Initial verified focused failure: https://github.com/dev-krish-xyz/tokenlens/actions/runs/45033249660/job/137241257924
+- Reset checkpoint: Git tag `demo/composal-stream-usage-ready` (the prepared, unfixed state).
 - Local checkout: `/Users/krish/Developer/tokenlens-composal-demo`. The original checkout and its uncommitted work were left intact.
 - GitHub push, PR creation, Actions and public read access verified. Composal/Slack access is **not configured or verified** here; no usable Composal connector or CLI was available.
 
@@ -35,10 +35,10 @@ From the repository root:
 
 ```sh
 bun run typecheck
-bun run test
+bun run turbo test --continue=always -- --isolate
 ```
 
-Verified locally: typechecks pass in all five packages; gateway **81 pass / 3 fail**, shared **105 pass**, worker **33 pass**, web **17 pass**. GitHub's initial run also passed installation/typechecking and failed exclusively on these three cases. Use `bun run test`: bare root `bun test` additionally discovers the live-service E2E script, which is outside this demo and was not run.
+Verified locally: typechecks pass in all five packages; gateway **81 pass / 3 fail**, shared **105 pass**, worker **33 pass**, web **17 pass**. The focused GitHub check reproduced these same three failures after successful installation. Broad Linux CI exposed a pre-existing cross-file module-mock import error; the demo runner uses Bun's `--isolate` and Turbo's `--continue=always` so every unit file runs with fresh globals and all packages finish. Assertions and package scripts are unchanged. Use `bun run turbo test --continue=always -- --isolate`: bare root `bun test` additionally discovers the live-service E2E script, which is outside this demo and was not run.
 
 ## Manual Composal and Slack setup
 
@@ -72,7 +72,7 @@ implement the smallest correction. Preserve all existing regression
 assertions, immediate streaming and existing error behavior. Do not hide
 failures, change CI to pass, or alter dependencies, credentials, deployments,
 data, main or dev. Never merge or enable auto-merge.
-From the root run bun run typecheck and bun run test. Commit and push the fix
+From the root run bun run typecheck and bun run turbo test --continue=always -- --isolate. Commit and push the fix
 to this same branch, then inspect checks for that exact SHA. Report failures
 honestly. Post a short handoff in the originating Slack thread with the PR,
 full SHA, changed files, actual test results and CI links; mention Reviewer
@@ -96,7 +96,7 @@ Fixer's implementation, not just its summary. Ensure the original regression
 assertions remain and the fix handles fragmented usage without delaying
 streaming or changing existing behavior. Inspect the relevant worker usage
 path. Install frozen dependencies and independently run the focused stream
-test, bun run typecheck and bun run test. Inspect GitHub check results and
+test, bun run typecheck and bun run turbo test --continue=always -- --isolate. Inspect GitHub check results and
 their associated commit; an older green run is insufficient. If the head
 changes, review the new head before issuing a verdict.
 Do not modify code, push, merge, deploy or enable auto-merge. Report PASS,
@@ -147,8 +147,8 @@ cd /Users/krish/Developer/tokenlens-composal-demo
 git switch demo/composal-stream-usage
 git status --short
 git pull --ff-only origin demo/composal-stream-usage
-git fetch origin tag demo/composal-stream-usage-start
-git restore --source=demo/composal-stream-usage-start -- gateway/src/handlers/stream.ts gateway/src/handlers/stream.test.ts .github/workflows/composal-demo.yml
+git fetch origin tag demo/composal-stream-usage-ready
+git restore --source=demo/composal-stream-usage-ready -- gateway/src/handlers/stream.ts gateway/src/handlers/stream.test.ts .github/workflows/composal-demo.yml
 git diff --stat
 git diff --check
 git add gateway/src/handlers/stream.ts gateway/src/handlers/stream.test.ts .github/workflows/composal-demo.yml

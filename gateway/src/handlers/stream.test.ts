@@ -175,6 +175,30 @@ describe('streamHandler', () => {
     expect(job.tokensOut).toBe(7)
   })
 
+  test.each([5, 12, 43])('usage event split at byte %i retains token accounting', async (splitAt) => {
+    const content = 'data: {"choices":[{"delta":{"content":"hello"}}]}\n\n'
+    const usage = 'data: {"usage":{"prompt_tokens":42,"completion_tokens":7}}\n\n'
+    const done = 'data: [DONE]\n\n'
+    // Network reads can split an SSE line anywhere, independently of event boundaries.
+    globalThis.fetch = makeFetchMock([
+      content,
+      usage.slice(0, splitAt),
+      usage.slice(splitAt) + done,
+    ]) as unknown as typeof fetch
+
+    const res = await makeApp().request('/v1/chat/completions', { method: 'POST' })
+    expect(res.status).toBe(200)
+    expect(await res.text()).toBe(content + usage + done)
+    await new Promise((r) => setTimeout(r, 0))
+
+    expect(mockIngestionAdd.mock.calls).toHaveLength(1)
+    const job = mockIngestionAdd.mock.calls[0]?.[1] as { tokensIn: number; tokensOut: number }
+    expect({ tokensIn: job.tokensIn, tokensOut: job.tokensOut }).toEqual({
+      tokensIn: 42,
+      tokensOut: 7,
+    })
+  })
+
   test('upstream non-OK before streaming — generic 502, no upstream status in body', async () => {
     globalThis.fetch = makeFetchMock([], false, 401) as unknown as typeof fetch
 
